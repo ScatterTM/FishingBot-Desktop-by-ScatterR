@@ -41,7 +41,7 @@ The automated JavaScript tests do not replace a live Twitch Extension release te
 
 ## Licence
 
-Copyright (c) 2026 [Your name or company]. All rights reserved.
+Copyright (c) 2026 Fishingsys Desktop. All rights reserved.
 
 This project is proprietary. See `LICENSE`. Viewing the source in this repository does not give permission to use, copy, modify or distribute it. Third-party packages keep their own licences.
 
