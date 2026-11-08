@@ -192,9 +192,12 @@ function normalize(raw) {
   };
 }
 
+// The official update source. A value in .env (FISHINGBOT_UPDATE_REPOSITORY) overrides it.
+const DEFAULT_UPDATE_REPOSITORY = 'ScatterTM/FishingBot-Desktop-by-ScatterR';
+
 function view(root) {
   const settings = normalize(readRaw(root));
-  settings.updates.repository = envValue(root, 'FISHINGBOT_UPDATE_REPOSITORY');
+  settings.updates.repository = envValue(root, 'FISHINGBOT_UPDATE_REPOSITORY') || DEFAULT_UPDATE_REPOSITORY;
   return settings;
 }
 

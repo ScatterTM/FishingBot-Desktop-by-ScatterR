@@ -13,7 +13,8 @@ const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const HEADERS = { 'User-Agent': 'Fishingbot-Desktop', Accept: 'application/vnd.github+json' };
 
 function parseVersion(text) {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(String(text || '').trim());
+  // Accepts v1.0.0, V1.0.0-beta and V.1.0.0_Beta (the tag format of the 1.0.0 Beta release).
+  const match = /^v?\.?(\d+)\.(\d+)\.(\d+)/i.exec(String(text || '').trim());
   return match ? match.slice(1).map(Number) : null;
 }
 
