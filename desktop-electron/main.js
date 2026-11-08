@@ -830,14 +830,6 @@ function createMainWindow(preload, renderer) {
     win.webContents.reloadIgnoringCache();
   });
 
-  // With "Start when OBS starts" on, closing the window minimises it: the app keeps running, so the OBS trigger
-  // still works. With the setting off, closing the window quits as before.
-  win.on('close', (event) => {
-    if (appQuitting || settings.view(ROOT).startup.startWhenObsStarts !== true) return;
-    event.preventDefault();
-    win.minimize();
-    startupLog('Window minimised instead of closed (Start when OBS starts is on).');
-  });
   win.on('closed', () => {
     clearTimeout(fallback);
     mainWin = null;
