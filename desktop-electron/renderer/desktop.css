@@ -207,13 +207,43 @@ body:not(.text-shadow) .icon-label { color: var(--wallpaper-ink); font-weight: 6
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn.small { padding: 4px 10px; font-size: 12px; }
 
-.toast {
-  position: fixed; right: 22px; bottom: 100px; max-width: 420px; padding: 10px 14px;
-  background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-  border: 1px solid var(--glass-line); border-left: 3px solid var(--orange2); border-radius: var(--radius);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); z-index: 2500;
+/* Notifications: a stack of glass cards that rises from the taskbar, above its tray. The cards use the
+   taskbar's glass, blur, border and shadow, so they follow the same opacity setting. The pointer under the
+   stack points at the clock. Position is set by positionToasts() in desktop.js. */
+.toasts {
+  position: fixed; right: 16px; bottom: 80px; z-index: 2500;
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  width: min(360px, calc(100vw - 32px)); pointer-events: none;
 }
-.toast.bad { border-left-color: var(--red); }
+.toasts:empty { display: none; }
+.toasts::after {
+  content: ""; position: absolute; right: 26px; bottom: -6px; width: 12px; height: 12px;
+  background: var(--taskbar-glass); border-right: 1px solid var(--glass-line); border-bottom: 1px solid var(--glass-line);
+  transform: rotate(45deg); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+}
+.toast-card {
+  pointer-events: auto; position: relative; box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px;
+  padding: 11px 8px 11px 14px; color: var(--ink);
+  background: var(--taskbar-glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-line); border-radius: var(--r-xl);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  animation: toast-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.toast-card.leaving { animation: toast-out 200ms ease-in forwards; }
+.toast-card.tone-info { --tone: var(--orange2); }
+.toast-card.tone-ok { --tone: #4ade80; }
+.toast-card.tone-warn { --tone: #fbbf24; }
+.toast-card.tone-bad { --tone: #f87171; }
+.toast-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.toast-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.toast-text { font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
+.toast-bar { height: 4px; margin-top: 7px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.toast-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--tone, var(--orange2));
+  transition: width 220ms linear; }
+.toast-close { width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
+.toast-close:hover { color: var(--ink); background: rgba(255, 255, 255, 0.07); }
 
 /* ----- taskbar: floating glass dock, icons only; names appear after a 2 second hover ----- */
 .taskbar {
@@ -973,8 +1003,6 @@ body.lite-glass .window.unfocused { backdrop-filter: none; -webkit-backdrop-filt
 .tb-app.leaving { animation: tb-pop 200ms ease-in reverse forwards; }
 
 /* Toasts slide up and fade out. */
-.toast { animation: toast-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-.toast.leaving { animation: toast-out 220ms ease-in forwards; }
 
 /* Start menu: a gentle close, and rows that slide in one after another when it opens. */
 .start-menu.closing { animation: start-out 140ms ease-in forwards; }

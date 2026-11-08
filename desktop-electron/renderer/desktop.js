@@ -82,20 +82,79 @@
     return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
   }
 
-  function toast(text, kind = 'info') {
-    const node = $('toast');
-    node.textContent = text;
-    node.className = 'toast ' + (kind === 'bad' ? 'bad' : '');
-    node.hidden = false;
-    clearTimeout(toast.timer);
-    clearTimeout(toast.out);
-    toast.timer = setTimeout(() => {
-      node.classList.add('leaving');
-      toast.out = setTimeout(() => {
-        node.hidden = true;
-        node.classList.remove('leaving');
-      }, 220);
-    }, 4200);
+  // Notifications: a stack of glass cards above the taskbar's tray (see .toast-card in desktop.css).
+  // toast(text, kind, opts). kind: 'info' | 'ok' | 'warn' | 'bad'. opts: title; key (a toast with the same key
+  // is updated in place, used for progress); progress (0-100, shows a bar); sticky (stays until closed); ms.
+  const TOAST_MAX = 4;
+  const TOAST_TIME = { info: 4200, ok: 4200, warn: 6000, bad: 7000 };
+  const toastByKey = new Map();
+
+  // The stack sits above the tray, its right edge at the tray's right edge. When the taskbar is hidden
+  // (auto-hide), it is placed just above where the taskbar shows.
+  function positionToasts() {
+    const stack = $('toasts');
+    const bar = document.querySelector('.taskbar');
+    if (!stack || !bar) return;
+    const r = bar.getBoundingClientRect();
+    const tray = bar.querySelector('.tray');
+    const tr = tray ? tray.getBoundingClientRect() : r;
+    const hidden = r.top > window.innerHeight - 4;
+    const taskbarH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--taskbar-h')) || 54;
+    const bottom = hidden ? taskbarH + 28 : window.innerHeight - r.top + 12;
+    stack.style.bottom = `${Math.round(bottom)}px`;
+    stack.style.right = `${Math.max(8, Math.round(window.innerWidth - tr.right + 4))}px`;
+  }
+
+  function dismissToast(card) {
+    if (!card || card.dataset.gone) return;
+    card.dataset.gone = '1';
+    clearTimeout(card._timer);
+    if (card._key) toastByKey.delete(card._key);
+    card.classList.add('leaving');
+    setTimeout(() => card.remove(), 200);
+  }
+
+  function scheduleToast(card, ms) {
+    clearTimeout(card._timer);
+    if (ms) card._timer = setTimeout(() => dismissToast(card), ms);
+  }
+
+  function toast(text, kind = 'info', opts = {}) {
+    const stack = $('toasts');
+    if (!stack) return null;
+    const tone = ['ok', 'warn', 'bad'].includes(kind) ? kind : 'info';
+    let card = opts.key ? toastByKey.get(opts.key) : null;
+    if (!card || card.dataset.gone) {
+      card = document.createElement('div');
+      card.innerHTML = '<div class="toast-body"><div class="toast-title"></div><div class="toast-text"></div>'
+        + '<div class="toast-bar" hidden><span></span></div></div>'
+        + '<button class="toast-close" type="button"></button>';
+      const close = card.querySelector('.toast-close');
+      close.textContent = '×';
+      close.setAttribute('aria-label', t('Close'));
+      close.addEventListener('click', () => dismissToast(card));
+      card.addEventListener('mouseenter', () => clearTimeout(card._timer));
+      card.addEventListener('mouseleave', () => scheduleToast(card, card._ms));
+      if (opts.key) {
+        card._key = opts.key;
+        toastByKey.set(opts.key, card);
+      }
+      stack.append(card);
+      const live = [...stack.children].filter((c) => !c.dataset.gone);
+      for (const old of live.slice(0, Math.max(0, live.length - TOAST_MAX))) dismissToast(old);
+    }
+    card.className = `toast-card tone-${tone}`;
+    card.querySelector('.toast-title').textContent = opts.title || t('Fishingbot');
+    card.querySelector('.toast-text').textContent = text;
+    const bar = card.querySelector('.toast-bar');
+    const hasProgress = typeof opts.progress === 'number';
+    bar.hidden = !hasProgress;
+    if (hasProgress) bar.firstElementChild.style.width = `${Math.max(0, Math.min(100, opts.progress))}%`;
+    card._sticky = !!opts.sticky;
+    card._ms = opts.sticky ? 0 : (opts.ms || TOAST_TIME[tone]);
+    if (!card.matches(':hover')) scheduleToast(card, card._ms);
+    positionToasts();
+    return card;
   }
 
   async function run(promise) {
@@ -1684,24 +1743,31 @@
     if (security.lockOnWindowsLock) lockNow();
   });
 
-  // Update steps (see checkForUpdates in main.js): one toast line, replaced as the update moves on.
-  function updateText(s) {
+  // Update steps (see checkForUpdates in main.js). One card, updated in place as the update moves on.
+  function updateToast(s) {
     switch (s.state) {
-      case 'checking': return t('Checking for updates…');
-      case 'upToDate': return t('Fishingbot Desktop {v} is up to date.', { v: s.current });
-      case 'downloading': return s.percent == null
-        ? t('Downloading Fishingbot {v}…', { v: s.latest })
-        : t('Downloading Fishingbot {v}… {p}%', { v: s.latest, p: s.percent });
-      case 'verifying': return t('Checking the installer…');
-      case 'installing': return t('Closing to install {v}. The installer opens next.', { v: s.latest });
-      case 'error': return t('Update failed: {m}', { m: s.message });
-      default: return '';
+      case 'checking': return { text: t('Checking for updates…'), kind: 'info', sticky: true };
+      case 'upToDate': return { text: t('Fishingbot Desktop {v} is up to date.', { v: s.current }), kind: 'ok' };
+      case 'downloading': return {
+        text: s.percent == null ? t('Downloading Fishingbot {v}…', { v: s.latest }) : t('Downloading Fishingbot {v}… {p}%', { v: s.latest, p: s.percent }),
+        kind: 'info', progress: s.percent, sticky: true,
+      };
+      case 'verifying': return { text: t('Checking the installer…'), kind: 'info', progress: 100, sticky: true };
+      case 'installing': return { text: t('Closing to install {v}. The installer opens next.', { v: s.latest }), kind: 'ok', sticky: true };
+      case 'error': return { text: t('Update failed: {m}', { m: s.message }), kind: 'bad', ms: 9000 };
+      default: return null;
     }
   }
   api.onUpdateStatus((status) => {
-    const text = updateText(status || {});
-    if (text) toast(text, status.state === 'error' ? 'bad' : 'info');
+    const u = updateToast(status || {});
+    if (u) toast(u.text, u.kind, { key: 'update', title: t('Update'), progress: u.progress, sticky: u.sticky, ms: u.ms });
   });
+  // After an update has installed: confirm it once, on the first start of the new version.
+  setTimeout(() => {
+    api.takeUpdateNotice().then((r) => {
+      if (r && r.ok && r.notice) toast(t('Fishingbot was updated to {v}.', { v: r.notice.version }), 'ok', { title: t('Update'), ms: 6000 });
+    }).catch(() => {});
+  }, 1200);
 
   function reloadWeb() {
     for (const rec of windows.values()) {
@@ -2878,9 +2944,9 @@
     });
     $('tw-reconnect').addEventListener('click', async () => {
       const result = await api.reconnectTwitch();
-      if (result.ok) toast(t('Twitch reconnect requested.'));
-      else if (result.status === 401 || result.status === 403) toast(t('Sign in to the Control Centre first, then try again.'), 'bad');
-      else toast(`${t('Reconnect failed')}: ${result.error || 'unknown error'}`, 'bad');
+      if (result.ok) toast(t('Twitch reconnect requested.'), 'info', { title: t('Twitch') });
+      else if (result.status === 401 || result.status === 403) toast(t('Sign in to the Control Centre first, then try again.'), 'bad', { title: t('Twitch') });
+      else toast(`${t('Reconnect failed')}: ${result.error || 'unknown error'}`, 'bad', { title: t('Twitch') });
     });
     $('log-open').addEventListener('click', () => openApp('log'));
 
@@ -3009,6 +3075,7 @@
     layoutIcons();
     keepInArea();
     placeWidgets();
+    positionToasts();
   });
   document.addEventListener('fishingbot:reset-widgets', () => {
     try {

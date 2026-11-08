@@ -4,7 +4,7 @@
 // updates, admin actions and IPC. Apps (Control Centre tabs, settings, log) run
 // inside the desktop page, so there is one native window.
 
-const { app, BrowserWindow, dialog, ipcMain, Menu, powerMonitor, screen, session } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, powerMonitor, screen, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
@@ -65,6 +65,12 @@ const SECTION_KEYS = {
 
 let mainWin = null;
 let updating = false;
+
+// "1.0.3-beta" -> "1.0.3" (the numbers only, so the label after them does not matter).
+function numericVersion(text) {
+  const match = /^v?\.?(\d+)\.(\d+)\.(\d+)/i.exec(String(text || '').trim());
+  return match ? match.slice(1).join('.') : '';
+}
 
 function send(channel, payload) {
   if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(channel, payload);
@@ -357,10 +363,19 @@ async function runUpdateCheck({ boot }, server) {
     reportUpdate('downloading', { latest: info.latest, percent, received, total });
   });
   reportUpdate('verifying', { latest: info.latest });
-  server.addLog('UPDATE', `Installer verified (${info.installer.name}). Closing to install.`, 'ok');
+  server.addLog('UPDATE', `Installer verified (${info.installer.name}).`, 'ok');
+  // Remember the version being installed, so the next start can confirm the update worked.
+  settings.write(ROOT, { updates: { pendingVersion: info.latest } });
+  // shell.openPath starts the file the way Explorer does (admin prompts included). If it fails, nothing is closed.
+  const opened = await shell.openPath(file);
+  if (opened) {
+    settings.write(ROOT, { updates: { pendingVersion: null } });
+    throw new Error(`Windows could not open the installer: ${opened}`);
+  }
+  server.addLog('UPDATE', `Installer ${info.installer.name} opened. Fishingbot closes so it can install.`, 'ok');
   reportUpdate('installing', { latest: info.latest });
-  updates.launchInstallerAfterExit(file);
-  setImmediate(() => app.quit());
+  // Close after a moment, so the installer window is already up. Closing this app is still a normal quit.
+  setTimeout(() => app.quit(), 1500);
   return { status: 'installing', latest: info.latest };
 }
 
@@ -507,6 +522,19 @@ function registerIpc(server, admin) {
     }),
   );
   handleTrusted('updates:check', safe(() => checkForUpdates({ boot: false }, server)));
+  // Once after an update: if this start runs the version that was being installed, say so (one time per version).
+  handleTrusted(
+    'update:takeNotice',
+    safe(() => {
+      const u = settings.view(ROOT).updates;
+      if (!u.pendingVersion) return { notice: null };
+      settings.write(ROOT, { updates: { pendingVersion: null } });
+      const running = numericVersion(app.getVersion());
+      if (u.pendingVersion !== running || u.lastNotifiedVersion === running) return { notice: null };
+      settings.write(ROOT, { updates: { lastNotifiedVersion: running } });
+      return { notice: { version: running } };
+    }),
+  );
 }
 
 // Wallpaper and style. The image is read here and sent as a data URL; the renderer never opens files.

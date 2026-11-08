@@ -126,6 +126,9 @@ function normalize(raw) {
       autoCheck: updates.autoCheck !== false,
       ignoredVersion: typeof updates.ignoredVersion === 'string' ? updates.ignoredVersion : null,
       remindAfter: typeof updates.remindAfter === 'string' ? updates.remindAfter : null,
+      // The version being installed (set just before the installer opens) and the last version confirmed to the user.
+      pendingVersion: typeof updates.pendingVersion === 'string' ? updates.pendingVersion : null,
+      lastNotifiedVersion: typeof updates.lastNotifiedVersion === 'string' ? updates.lastNotifiedVersion : null,
     },
     appearance: {
       wallpaperFile: typeof look.wallpaperFile === 'string' && WALLPAPER_FILE.test(look.wallpaperFile) ? look.wallpaperFile : null,

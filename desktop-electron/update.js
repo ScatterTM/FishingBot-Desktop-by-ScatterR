@@ -7,7 +7,6 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
 
 const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const HEADERS = { 'User-Agent': 'Fishingbot-Desktop', Accept: 'application/vnd.github+json' };
@@ -104,19 +103,4 @@ async function downloadVerified(info, onProgress) {
   return file;
 }
 
-// Starts the installer once this app has exited, so no file is locked during the install.
-function launchInstallerAfterExit(installerPath) {
-  const helper = path.join(os.tmpdir(), `FishingbotUpdate-${process.pid}.cmd`);
-  const script = [
-    '@echo off',
-    ':waitapp',
-    `tasklist /FI "PID eq ${process.pid}" | find "${process.pid}" >nul`,
-    'if not errorlevel 1 (timeout /t 1 /nobreak >nul & goto waitapp)',
-    `start "" "${installerPath}"`,
-    'del "%~f0"',
-  ].join('\r\n');
-  fs.writeFileSync(helper, script);
-  spawn('cmd.exe', ['/c', helper], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-}
-
-module.exports = { findRelease, downloadVerified, launchInstallerAfterExit };
+module.exports = { findRelease, downloadVerified };
