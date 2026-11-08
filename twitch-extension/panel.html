@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fishingbot</title>
+  <link rel="stylesheet" href="panel.css">
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+</head>
+<body>
+  <main class="panel">
+    <header class="header">
+      <div><div class="eyebrow">Fishingbot</div><h1>Channel anglers</h1></div>
+      <div id="connection" class="connection waiting"><span class="dot"></span><span id="connection-text">Waiting for update</span></div>
+    </header>
+    <section class="totals" aria-label="Channel totals">
+      <div class="total-card"><span class="total-label">Total casts</span><strong id="total-casts">—</strong></div>
+      <div class="total-card"><span class="total-label">Anglers</span><strong id="total-anglers">—</strong></div>
+    </section>
+    <section class="board">
+      <div class="board-heading"><h2>Top anglers</h2><span id="updated-at" class="updated">No snapshot yet</span></div>
+      <div id="empty" class="empty">The leaderboard will appear when the streamer’s Fishingbot app is running.</div>
+      <ol id="leaderboard" class="leaderboard" aria-live="polite"></ol>
+    </section>
+    <footer>
+      <div class="commands"><strong>Play in chat</strong><span>!fish</span><span>!inventory</span><span>!perks</span><span>!stats</span></div>
+      <p>Personal progress is private to each viewer and is shown through chat commands.</p>
+    </footer>
+  </main>
+  <script src="panel.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+Copyright (c) 2026 [Your name or company]. All rights reserved.
+
+This software, its source code and its documentation (together, "the Software") are proprietary.
+
+No permission is granted to use, copy, modify, merge, publish, distribute, sublicense, sell or make the Software available to others, in whole or in part, without prior written permission from the copyright holder. Making the source code visible in a repository does not change this.
+
+Third-party components, such as npm packages (for example ws and mathjs), the Electron framework and Node.js, remain under their own licences. Their licence texts apply to them.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.

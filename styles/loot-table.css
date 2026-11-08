@@ -1,0 +1,169 @@
+/* Loot table editor: the one stylesheet for the Loot table tab, in the Control Centre and in the offline
+   Loot window of the desktop app. Markup: scripts/control-centre-loot.js. Edit here only; desktop-electron/
+   sync-shared.js copies this file into renderer/loot/ for the offline window. Corners follow --radius
+   (0 in the Control Centre, the desktop's corner setting in the desktop app). */
+
+.loot-ed {
+  --lt-surface: var(--panel, #191c20);
+  --lt-well: #0e1013;
+  --lt-line: var(--line, #363c44);
+  --lt-line-soft: rgba(255, 255, 255, 0.06);
+  --lt-ink: var(--ink, #f1f2f4);
+  --lt-muted: var(--muted, #a3aab4);
+  --lt-accent: var(--orange, #f2703f);
+  --lt-ok: #46a07b;
+  --lt-bad: var(--red, #dd705f);
+  --lt-r: var(--radius, 0px);
+  --lt-rs: var(--radius-sm, 0px);
+  --lt-mono: Consolas, "JetBrains Mono", ui-monospace, monospace;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.loot-ed [hidden] { display: none !important; }
+.loot-ed h2 { margin: 0; padding: 0; border: 0; font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.loot-ed h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.loot-ed p.small { margin: 3px 0 0; }
+.loot-ed .card { margin: 0; padding: 18px 20px; background: var(--lt-surface); border: 1px solid var(--lt-line); border-radius: var(--lt-r); }
+.loot-stack { display: grid; gap: 14px; min-width: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.loot-dot { display: inline-block; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--rc, var(--lt-muted)); }
+
+/* Fields shared by the tab, the editor and the add rows */
+.loot-ed input:not([type="range"]), .loot-ed select {
+  width: 100%; max-width: none; min-width: 0; padding: 7px 9px; font: inherit; font-size: 13px;
+  color: var(--lt-ink); background: var(--lt-well); border: 1px solid var(--lt-line); border-radius: var(--lt-rs);
+}
+.loot-ed input[type="checkbox"] { width: auto; flex: 0 0 auto; padding: 0; accent-color: var(--lt-accent); }
+.loot-ed input:focus-visible, .loot-ed select:focus-visible, .loot-ed button:focus-visible { outline: 2px solid var(--lt-accent); outline-offset: 1px; }
+.loot-ed input[type="number"], .loot-ed .loot-mono { font-family: var(--lt-mono); font-variant-numeric: tabular-nums; }
+
+/* Header: title, status and actions, then five figures and the issues */
+.loot-head { display: grid; gap: 16px; }
+.loot-head-main { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.loot-head-main h2 { font-size: 20px; }
+.loot-head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.loot-status { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; font-size: 12px; color: var(--lt-muted); border: 1px solid var(--lt-line); border-radius: 999px; }
+.loot-status .loot-dot { background: var(--lt-ok); }
+.loot-status.is-dirty { color: var(--lt-ink); border-color: var(--lt-accent); }
+.loot-status.is-dirty .loot-dot { background: var(--lt-accent); }
+.loot-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.loot-stats > div { display: grid; gap: 2px; padding: 10px 12px; background: var(--lt-well); border: 1px solid var(--lt-line-soft); border-radius: var(--lt-rs); }
+.loot-stats span { font-size: 12px; color: var(--lt-muted); }
+.loot-stats strong { font-family: var(--lt-mono); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.loot-stats .is-bad strong { color: var(--lt-bad); }
+.loot-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 12px; color: var(--lt-muted); }
+.loot-issues li { padding: 7px 10px 7px 12px; background: var(--lt-well); border-left: 3px solid var(--lt-line); border-radius: var(--lt-rs); }
+.loot-issues li.is-blocking { border-left-color: var(--lt-bad); color: var(--lt-ink); }
+.loot-ok { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--lt-muted); }
+.loot-ok .loot-dot { background: var(--lt-ok); }
+
+/* Tabs: a segmented control */
+.loot-seg { display: inline-flex; gap: 4px; justify-self: start; padding: 4px; margin: 0; background: var(--lt-well); border: 1px solid var(--lt-line); border-radius: var(--lt-r); }
+.loot-seg-btn { padding: 7px 16px; font: inherit; font-size: 13px; color: var(--lt-muted); background: transparent; border: 0; border-radius: var(--lt-rs); text-transform: none; letter-spacing: 0; }
+.loot-seg-btn:hover { color: var(--lt-ink); }
+.loot-seg-btn[aria-pressed="true"] { color: var(--lt-ink); background: var(--panel2, #22262c); }
+
+/* Section heads and the stacked odds bar */
+.loot-section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.loot-bar { display: flex; gap: 2px; height: 8px; margin: 0; overflow: hidden; background: var(--lt-well); border-radius: 999px; }
+.loot-bar-seg { display: block; height: 100%; transition: width 0.15s ease-out; }
+.loot-bar-seg:first-child { border-radius: 999px 0 0 999px; }
+.loot-bar-seg:last-child { border-radius: 0 999px 999px 0; }
+.loot-total { padding: 5px 10px; font-size: 12px; color: var(--lt-muted); white-space: nowrap; border: 1px solid var(--lt-line); border-radius: 999px; }
+.loot-total strong { font-family: var(--lt-mono); color: var(--lt-ink); font-weight: 600; }
+.loot-total.is-bad { border-color: var(--lt-bad); }
+.loot-total.is-bad strong { color: var(--lt-bad); }
+
+/* Rarity odds */
+.loot-odds-card .loot-bar { margin-bottom: 16px; }
+.loot-odds { display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 10px; }
+.loot-odd { display: grid; gap: 8px; padding: 11px 12px; background: var(--lt-well); border: 1px solid var(--lt-line-soft); border-top: 2px solid var(--rc, var(--lt-line)); border-radius: var(--lt-rs); }
+.loot-odd.is-treasury { border-style: dashed; border-color: var(--lt-line); border-top-color: var(--rc); }
+.loot-odd-name { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--lt-muted); }
+.loot-odd-input { display: flex; align-items: center; gap: 6px; }
+.loot-odd-input input { flex: 1; font-family: var(--lt-mono); }
+.loot-odd-input > span { font-size: 12px; color: var(--lt-muted); }
+
+/* Tools: search, rarity filter chips and the bulk actions */
+.loot-tools { display: grid; gap: 12px; }
+.loot-tools-top { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.loot-search { display: grid; gap: 6px; flex: 1 1 280px; min-width: 0; }
+.loot-search label { font-size: 12px; color: var(--lt-muted); }
+.loot-tools-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.loot-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.loot-chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; font: inherit; font-size: 12px; color: var(--lt-muted); background: transparent; border: 1px solid var(--lt-line); border-radius: 999px; text-transform: none; letter-spacing: 0; }
+.loot-chip:hover { color: var(--lt-ink); }
+.loot-chip[aria-pressed="true"] { color: var(--lt-ink); background: var(--lt-well); border-color: var(--rc, var(--lt-accent)); }
+.loot-chip-count { font-family: var(--lt-mono); font-size: 11px; color: var(--lt-muted); }
+
+/* Rarity groups: one collapsible panel per rarity, coloured by its rarity */
+.loot-groups { display: grid; gap: 10px; min-width: 0; }
+.loot-group { margin: 0; padding: 0; overflow: hidden; background: var(--lt-surface); border: 1px solid var(--lt-line); border-left: 3px solid var(--rc, var(--lt-line)); border-radius: var(--lt-r); }
+.loot-group > summary { display: flex; align-items: center; gap: 10px; margin: 0; padding: 13px 16px; cursor: pointer; list-style: none; }
+.loot-group > summary::-webkit-details-marker { display: none; }
+.loot-group > summary::after { content: "+"; margin-left: auto; font-size: 16px; line-height: 1; color: var(--lt-muted); }
+.loot-group[open] > summary::after { content: "\2212"; }
+.loot-group-head h3 { font-size: 14px; }
+.loot-count { padding: 2px 9px; font-family: var(--lt-mono); font-size: 11px; color: var(--lt-muted); background: var(--lt-well); border: 1px solid var(--lt-line-soft); border-radius: 999px; white-space: nowrap; }
+.loot-rows { padding: 0 16px; }
+.loot-row-head, .loot-row { display: grid; grid-template-columns: minmax(0, 1fr) 112px minmax(150px, 200px) auto; gap: 12px; align-items: center; }
+.loot-row-head { padding: 8px 0; font-size: 11px; color: var(--lt-muted); border-bottom: 1px solid var(--lt-line); }
+.loot-row-head span:nth-child(2), .loot-row-head span:nth-child(3) { text-align: right; }
+.loot-row { padding: 9px 0; border-bottom: 1px solid var(--lt-line-soft); }
+.loot-row:last-child { border-bottom: 0; }
+.loot-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.loot-name-btn { min-width: 0; padding: 0; overflow: hidden; font: inherit; font-size: 14px; color: var(--lt-ink); text-align: left; text-overflow: ellipsis; white-space: nowrap; background: none; border: 0; cursor: pointer; }
+.loot-name-btn:hover { color: var(--lt-accent); text-decoration: underline; }
+.loot-perk { padding: 1px 8px; font-size: 10px; color: var(--lt-accent); white-space: nowrap; border: 1px solid currentColor; border-radius: 999px; }
+.loot-weight input { text-align: right; }
+.loot-share { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 10px; align-items: center; }
+.loot-share-bar { display: block; height: 6px; overflow: hidden; background: var(--lt-well); border-radius: 999px; }
+.loot-share-bar > span { display: block; height: 100%; background: var(--rc, var(--lt-accent)); border-radius: 999px; transition: width 0.15s ease-out; }
+.loot-share-text { font-family: var(--lt-mono); font-size: 12px; color: var(--lt-muted); text-align: right; font-variant-numeric: tabular-nums; }
+.loot-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.loot-row-actions .btn { padding: 5px 10px; font-size: 12px; }
+.loot-add { display: grid; grid-template-columns: minmax(0, 1fr) 112px auto; gap: 10px; padding: 12px 16px 14px; border-top: 1px solid var(--lt-line); }
+.loot-empty { margin: 0; padding: 12px 0; color: var(--lt-muted); }
+
+/* Areas */
+.loot-areas { display: grid; gap: 0; }
+.loot-area-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.loot-area-bar { margin-bottom: 16px; }
+.loot-area-head, .loot-area-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) 96px 84px minmax(140px, 1fr) auto; gap: 10px; align-items: center; }
+.loot-area-head { padding: 0 0 8px; font-size: 11px; color: var(--lt-muted); border-bottom: 1px solid var(--lt-line); }
+.loot-area-row { padding: 9px 0; border-bottom: 1px solid var(--lt-line-soft); }
+.loot-area-add { padding-top: 14px; border-bottom: 0; }
+.loot-area-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.loot-area-foot p { max-width: 62ch; margin: 0; }
+
+/* The fish editor dialog */
+.loot-modal { width: min(680px, 100%); }
+.loot-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.loot-modal-section { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--lt-line); }
+.loot-modal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: start; }
+.loot-modal-grid .field { min-width: 0; }
+.loot-perk-fields { display: grid; gap: 12px; }
+.loot-switch { margin: 0; }
+.loot-switch > span { display: grid; gap: 4px; }
+.loot-slider { display: grid; grid-template-columns: minmax(0, 1fr) 84px; gap: 12px; align-items: center; }
+.loot-slider input[type="range"] { width: 100%; padding: 0; accent-color: var(--lt-accent); }
+.loot-preview { display: grid; gap: 4px; margin-top: 16px; padding: 12px 14px; border: 1px solid var(--lt-line); border-radius: var(--lt-rs); }
+.loot-preview strong { font-size: 11px; font-weight: 600; color: var(--lt-muted); }
+.loot-modal-actions { margin-top: 16px; }
+
+/* Narrow windows: rows and the area table stack */
+@media (max-width: 900px) {
+  .loot-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .loot-row-head, .loot-area-head { display: none; }
+  .loot-row { grid-template-columns: minmax(0, 1fr) 104px; }
+  .loot-row .loot-share, .loot-row-actions { grid-column: 1 / -1; }
+  .loot-row-actions { justify-content: flex-start; }
+  .loot-add { grid-template-columns: minmax(0, 1fr) 104px; }
+  .loot-add .btn { grid-column: 1 / -1; justify-self: start; }
+  .loot-area-row, .loot-area-add { grid-template-columns: 1fr 1fr; }
+  .loot-area-row > :first-child, .loot-area-row .loot-share { grid-column: 1 / -1; }
+  .loot-area-add > :first-child { grid-column: 1 / -1; }
+  .loot-area-add > span[aria-hidden] { display: none; }
+  .loot-area-add .btn { justify-self: start; }
+}

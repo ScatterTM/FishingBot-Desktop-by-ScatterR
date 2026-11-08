@@ -1,0 +1,79 @@
+:root{--profile-banner-line:rgba(237,232,220,.12)}
+
+/* Existing streamer control: keep the same UI, only place it beside the live fishing status. */
+.profile-hero-top > [data-profile-streamer-moved="1"]{
+  grid-column:1!important;
+  grid-row:2!important;
+  justify-self:end!important;
+  align-self:end!important;
+  width:min(470px,100%)!important;
+  margin:0 0 2px!important;
+  z-index:4!important;
+}
+
+/* Profile banner: two clear information bands instead of three floating columns. */
+.profile-hero{
+  position:relative!important;
+  min-height:174px!important;
+  padding:20px 22px 19px!important;
+  margin-bottom:20px!important;
+  border:1px solid var(--bone-12)!important;
+  background:var(--ink-100)!important;
+  overflow:visible!important;
+}
+.profile-hero::before,.profile-hero::after{opacity:.7}
+.profile-hero-top{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-rows:auto 1fr!important;
+  align-items:start!important;
+  gap:0!important;
+  min-height:132px!important;
+  position:relative!important;
+}
+.profile-hero-identity{
+  display:flex!important;
+  align-items:center!important;
+  gap:14px!important;
+  min-width:0!important;
+  grid-column:1!important;
+  grid-row:1!important;
+}
+.profile-avatar-ring{width:60px!important;height:60px!important;flex:none!important}
+.profile-identity-text{min-width:0!important}
+.profile-identity-text h2{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  font-size:1.18rem!important;
+  line-height:1.1!important;
+}
+.profile-identity-text p{margin-top:4px!important;color:var(--bone-40)!important;font-size:.68rem!important;letter-spacing:.02em!important}
+.profile-identity-text .rank-tag{font-size:.5rem!important;line-height:1!important;padding:4px 7px!important}
+.profile-identity-text .profile-boosts{display:block!important;position:absolute!important;left:0!important;bottom:0!important;margin:0!important;line-height:1!important}
+.profile-boosts-btn{font-size:.58rem!important;letter-spacing:.12em!important;padding-bottom:5px!important}
+.profile-boosts-panel{top:calc(100% + 10px)!important;bottom:auto!important;left:0!important;right:auto!important;width:min(360px,calc(100vw - 48px))!important;max-height:260px!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;scrollbar-width:thin!important;box-shadow:0 14px 34px rgba(0,0,0,.42)!important;z-index:40!important}
+.profile-boosts-panel::-webkit-scrollbar{width:6px}.profile-boosts-panel::-webkit-scrollbar-thumb{background:rgba(237,232,220,.18)}.profile-boosts-panel::-webkit-scrollbar-track{background:transparent}
+.fishing-status-pill{position:absolute!important;left:50%!important;bottom:7px!important;transform:translateX(-50%)!important;display:flex!important;align-items:center!important;justify-content:center!important;min-width:220px!important;min-height:38px!important;padding:6px 16px!important;border:1px solid var(--profile-banner-line)!important;background:rgba(9,14,14,.94)!important;box-shadow:0 0 0 4px rgba(9,14,14,.55)!important;z-index:3!important}
+.fishing-status-dot{width:5px!important;height:5px!important;flex:none!important}.fishing-status-text-wrap{min-width:0!important}
+.profile-hero-actions{position:static!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;grid-column:2!important;grid-row:1!important;min-height:34px!important}
+.profile-hero-actions .fishdex-refreshed-note{margin-right:2px!important}.profile-hero-actions .refresh-btn,.profile-hero-actions .fishdex-logout-link{min-height:34px!important;padding:7px 10px!important}
+.profile-hero-top::after{content:"";position:absolute;left:0;right:0;bottom:55px;height:1px;background:var(--profile-banner-line);pointer-events:none}
+@media(max-width:900px){
+  .profile-hero{min-height:188px!important}.profile-hero-top{min-height:146px!important}.fishing-status-pill{left:50%!important;min-width:190px!important}
+  .profile-hero-top > [data-profile-streamer-moved="1"]{width:min(430px,100%)!important}
+}
+@media(max-width:680px){
+  .profile-hero{min-height:0!important;padding:16px!important}.profile-hero-top{display:flex!important;flex-direction:column!important;gap:14px!important;min-height:0!important}.profile-hero-identity{width:100%!important}.profile-hero-actions{width:100%!important;justify-content:flex-start!important;order:2!important}.profile-identity-text .profile-boosts{position:static!important;margin-top:7px!important}
+  .profile-hero-top > [data-profile-streamer-moved="1"]{order:3!important;width:100%!important;margin:0!important}
+  .fishing-status-pill{position:static!important;transform:none!important;order:4!important;width:100%!important;min-width:0!important;box-shadow:none!important}.profile-hero-top::after{display:none!important}
+  .profile-boosts-panel{top:calc(100% + 8px)!important;left:0!important;right:auto!important;width:min(360px,calc(100vw - 32px))!important;max-width:calc(100vw - 32px)!important;max-height:240px!important}
+}
+@keyframes fishingHubPageFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+body{animation:fishingHubPageFadeIn .34s ease-out backwards}
+@keyframes fishingHubSkeletonShimmer{0%{background-position:140% 0}100%{background-position:-40% 0}}
+.lb-skeleton{display:grid;gap:0;width:100%;border:1px solid var(--bone-12,rgba(237,232,220,.12));background:rgba(237,232,220,.018)}
+.lb-skeleton-row{display:grid;grid-template-columns:54px minmax(120px,1fr) 96px;gap:14px;align-items:center;min-height:44px;padding:0 14px;border-bottom:1px solid rgba(237,232,220,.07)}.lb-skeleton-row:last-child{border-bottom:0}
+.lb-skeleton-bar{display:block;height:9px;border-radius:2px;background:linear-gradient(90deg,rgba(237,232,220,.045) 0%,rgba(237,232,220,.11) 42%,rgba(237,232,220,.045) 78%);background-size:220% 100%;animation:fishingHubSkeletonShimmer 1.35s ease-in-out infinite}.lb-skeleton-bar.rank{width:26px}.lb-skeleton-bar.name{width:min(180px,72%)}.lb-skeleton-bar.value{width:62px;margin-left:auto}
+@media(max-width:680px){.lb-skeleton-row{grid-template-columns:38px minmax(90px,1fr) 70px;gap:10px;padding:0 10px}}@media(prefers-reduced-motion:reduce){body{animation:none}.lb-skeleton-bar{animation:none}}

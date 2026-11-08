@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>Fishing overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles/overlay-alerts.css?v=19">
+<script src="/scripts/overlay-sounds.js?v=2"></script>
+<script src="/scripts/overlay-render.js?v=14"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body[hidden] { display: none; }
+  #luck { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); display: none; margin: 0; }
+  #stack { position: fixed; left: 50%; right: auto; transform: translateX(-50%); width: min(560px, calc(100vw - 40px)); display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+  body.top #stack { top: 84px; }
+  body.bottom #stack { bottom: 74px; flex-direction: column-reverse; }
+  #stack .ovx-alert:not(.ovx-style-pill) { width: 100%; max-width: 100%; }
+  /* Left/right means anchor the visible alert block itself at that screen edge.
+     Keep text alignment independent, but do not let a centered text-align margin
+     re-center the whole block inside the 560px stack. Wide banner styles shrink to
+     their content width when side-positioned; centered banners keep their strip. */
+  #stack[data-horizontal-position="left"] { align-items: flex-start; }
+  #stack[data-horizontal-position="right"] { align-items: flex-end; }
+  #stack[data-horizontal-position="left"] .ovx-alert:not(.ovx-style-pill),
+  #stack[data-horizontal-position="right"] .ovx-alert:not(.ovx-style-pill) { width: fit-content; max-width: 100%; }
+  #stack[data-horizontal-position="left"] .ovx-alert:not(.ovx-style-pill) { margin-left: 0 !important; margin-right: auto !important; }
+  #stack[data-horizontal-position="right"] .ovx-alert:not(.ovx-style-pill) { margin-left: auto !important; margin-right: 0 !important; }
+</style>
+</head>
+<body class="top" hidden>
+  <div id="luck" class="ovx-luck"></div>
+  <div id="stack"></div>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var channel = params.get('channel') || '';
+  var key = params.get('key') || '';
+  var PAGE_BUILD = 'v3.97';
+  var STYLES = ['card', 'pill', 'banner', 'ticket', 'playful', 'glass', 'tag', 'terminal'];
+  var ANIMS = ['slide', 'fade', 'pop'];
+  var FONTS = ['display', 'body', 'mono', 'serif'];
+  var after = null;
+  var queue = [];
+  var busy = false;
+  var settings = { alertSeconds: 6, sound: false, soundId: 'chime', position: 'top', alertHorizontalPosition: 'center', accent: '#C9A227',
+    style: 'card', animation: 'slide', animationMs: 420, font: 'display', rarityColors: false,
+    alertTemplate: '{user} caught {fish}', alertTextScale: 100, alertSize: 100,
+    luckTemplate: '{name} · {multiplier}x luck · {time}', luckTimer: true, luckScale: 100, luckAccent: '#C9A227', luckStyle: 'bar',
+    luckPosition: 'top', luckHorizontalPosition: 'center', soundVolume: 80, pointsBarGoal: 'luck', alertUpper: false, showTier: true,
+    alertAlign: 'center', alertBg: '', alertBgTransparency: 0, luckAlign: 'center', luckBg: '', luckBgTransparency: 0, pointsBarColor: '', alertCommunity: false };
+  var lastLuck = null;
+  var lastPoints = null;
+
+  function esc(s) { return window.OverlayRender.esc(s); }
+
+  function setAlertHorizontalPosition(position) {
+    var side = ['left', 'center', 'right'].indexOf(position) >= 0 ? position : 'center';
+    var stack = document.getElementById('stack');
+    if (!stack) return side;
+    stack.dataset.horizontalPosition = side;
+    if (side === 'left') {
+      stack.style.left = '20px'; stack.style.right = 'auto'; stack.style.transform = 'none';
+    } else if (side === 'right') {
+      stack.style.left = 'auto'; stack.style.right = '20px'; stack.style.transform = 'none';
+    } else {
+      stack.style.left = '50%'; stack.style.right = 'auto'; stack.style.transform = 'translateX(-50%)';
+    }
+    return side;
+  }
+
+  // Keep the alert stack clear of the luck/banner block when both are anchored
+  // to the same edge. The banner can grow when a long global event wraps or the
+  // channel-points goal is displayed, so a fixed 84px/74px offset is not enough.
+  function updateAlertStackSpacing() {
+    var stack = document.getElementById('stack');
+    var luck = document.getElementById('luck');
+    if (!stack || !luck) return;
+
+    var alertEdge = settings.position === 'bottom' ? 'bottom' : 'top';
+    var luckEdge = settings.luckPosition === 'bottom' ? 'bottom' : 'top';
+    var luckVisible = luck.style.display !== 'none' && luck.getBoundingClientRect().height > 0;
+
+    if (alertEdge === 'top') {
+      stack.style.bottom = 'auto';
+      var topOffset = 84;
+      if (luckVisible && luckEdge === 'top') {
+        topOffset = Math.max(topOffset, Math.ceil(luck.getBoundingClientRect().bottom + 14));
+      }
+      stack.style.top = topOffset + 'px';
+    } else {
+      stack.style.top = 'auto';
+      var bottomOffset = 74;
+      if (luckVisible && luckEdge === 'bottom') {
+        bottomOffset = Math.max(bottomOffset, Math.ceil(window.innerHeight - luck.getBoundingClientRect().top + 14));
+      }
+      stack.style.bottom = bottomOffset + 'px';
+    }
+  }
+
+  function applySettings(s) {
+    settings = Object.assign({}, settings, s);
+    if (STYLES.indexOf(settings.style) < 0) settings.style = 'card';
+    if (ANIMS.indexOf(settings.animation) < 0) settings.animation = 'slide';
+    if (FONTS.indexOf(settings.font) < 0) settings.font = 'display';
+    document.body.className = settings.position === 'bottom' ? 'bottom' : 'top';
+    if (!busy) setAlertHorizontalPosition(settings.alertHorizontalPosition);
+    document.documentElement.style.setProperty('--accent', settings.accent);
+    // The luck banner sits at the top or the bottom of the screen.
+    var luck = document.getElementById('luck');
+    if (settings.luckPosition === 'bottom') { luck.style.top = 'auto'; luck.style.bottom = '14px'; }
+    else { luck.style.bottom = 'auto'; luck.style.top = '14px'; }
+    // Horizontal location is independent of text alignment; keep a safe screen inset.
+    luck.style.margin = '0';
+    if (settings.luckHorizontalPosition === 'left') { luck.style.left = '20px'; luck.style.right = 'auto'; luck.style.transform = 'none'; }
+    else if (settings.luckHorizontalPosition === 'right') { luck.style.left = 'auto'; luck.style.right = '20px'; luck.style.transform = 'none'; }
+    else { luck.style.left = '50%'; luck.style.right = 'auto'; luck.style.transform = 'translateX(-50%)'; }
+    updateAlertStackSpacing();
+  }
+
+  // A test alert carries its own look (the preview on screen). A real alert uses the saved settings.
+  function lookFor(a) {
+    return a.look || settings;
+  }
+
+  // Header text for the alert: the viewer's luck and rod weight, e.g. "☘️2.5x · weight 1.2x".
+  // Header text: luck and weight when Show luck and weight is on, then the community catches when Show community catches is on.
+  function statsText(a, look) {
+    var parts = [];
+    if (look.alertStats) {
+      if (a.luck) parts.push(a.luck);
+      if (a.weight) parts.push('weight ' + a.weight);
+    }
+    if (look.alertCommunity && a.community != null) parts.push(Number(a.community).toLocaleString('en-US') + ' community catches');
+    return parts.join(' · ');
+  }
+
+  function playSound(look) {
+    if (look.sound && window.OverlaySounds) window.OverlaySounds.play(look.soundId || 'chime', look.soundVolume);
+  }
+
+  function showNext() {
+    if (busy || !queue.length) return;
+    busy = true;
+    var a = queue.shift();
+    var look = lookFor(a);
+    setAlertHorizontalPosition(look.alertHorizontalPosition || settings.alertHorizontalPosition);
+    playSound(look);
+    // A new fish shows "NEW FISH" in front of its rarity, so the header says both.
+    var rarity = a.discovery ? 'New fish · ' + a.tierName : a.tierName;
+    var card = window.OverlayRender.build(look, { user: a.user, fish: a.item, rarity: rarity, tierId: a.tierId, stats: statsText(a, look), community: a.community });
+    document.getElementById('stack').appendChild(card);
+    window.OverlayRender.enter(card, look.animation, look.animationMs, look.alertHorizontalPosition || settings.alertHorizontalPosition);
+    setTimeout(function () {
+      window.OverlayRender.leave(card).then(function () { busy = false; showNext(); });
+    }, Math.max(3, settings.alertSeconds) * 1000);
+  }
+
+  // The banner shows the luck text while a luck event runs, and the channel points bar when it is on.
+  // Nothing to show means the banner is hidden. The text shows the remaining time, redrawn every second.
+  function renderBanner(d) {
+    // Global luck has the same priority as it does in the fishing-roll logic.
+    // If no global event is active, keep showing the channel-specific event.
+    var globalLuck = d.globalLuck && d.globalLuck.active ? d.globalLuck : null;
+    var channelLuck = d.luck && d.luck.active ? d.luck : null;
+    lastLuck = settings.luckBanner !== false ? (globalLuck || channelLuck) : null;
+    lastPoints = settings.pointsBar && d.points ? d.points : null;
+    if (!lastLuck && !lastPoints) {
+      document.getElementById('luck').style.display = 'none';
+      updateAlertStackSpacing();
+      return;
+    }
+    drawLuck();
+  }
+
+  function drawLuck() {
+    if (!lastLuck && !lastPoints) return;
+    var ms = lastLuck && lastLuck.expires ? lastLuck.expires - Date.now() : null;
+    var time = lastLuck && settings.luckTimer ? window.OverlayRender.countdown(ms) : '';
+    window.OverlayRender.paintLuck(document.getElementById('luck'),
+      { accent: settings.luckAccent, luckScale: settings.luckScale, luckTemplate: settings.luckTemplate, luckStyle: settings.luckStyle, pointsBar: settings.pointsBar, pointsBarColor: settings.pointsBarColor },
+      { showText: !!lastLuck, name: lastLuck ? lastLuck.name : '', multiplier: lastLuck ? lastLuck.multiplier : '', time: time, points: lastPoints });
+    // Remeasure after paintLuck changes the text/bar content and therefore height.
+    updateAlertStackSpacing();
+  }
+
+  async function poll() {
+    try {
+      var url = '/api/overlay?channel=' + encodeURIComponent(channel) + '&key=' + encodeURIComponent(key) +
+        (after !== null ? '&after=' + after : '');
+      var res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        var d = await res.json();
+        // A new release is running on the server. Reload once with a new URL, so a cached
+        // copy of this page is not used again. If the URL already has this build, keep running.
+        if (d.build && d.build !== PAGE_BUILD) {
+          var next = new URL(location.href);
+          if (next.searchParams.get('_b') !== d.build) {
+            next.searchParams.set('_b', d.build);
+            location.replace(next.toString());
+            return;
+          }
+        }
+        if (!d.enabled) {
+          document.body.hidden = true;
+        } else {
+          document.body.hidden = false;
+          applySettings(d.settings);
+          after = d.seq;
+          (d.alerts || []).forEach(function (a) { queue.push(a); });
+          showNext();
+          renderBanner(d);
+        }
+      }
+    } catch (e) { /* a missed poll is harmless */ }
+    setTimeout(poll, 1500);
+  }
+
+  setInterval(drawLuck, 1000);
+  window.addEventListener('resize', updateAlertStackSpacing);
+
+  if (!channel || !key) {
+    document.body.hidden = false;
+    document.getElementById('stack').innerHTML = '<div class="ovx-alert ovx-style-card"><span class="ovx-line">Overlay link is incomplete. Copy the link from Broadcaster Admin.</span></div>';
+  } else {
+    poll();
+  }
+})();
+</script>
+</body>
+</html>

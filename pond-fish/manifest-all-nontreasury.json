@@ -1,0 +1,896 @@
+[
+  {
+    "name": "1.5x Luck (permanent)",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "1-5x-luck.svg"
+  },
+  {
+    "name": "Raidfish (control the raid)",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "raidfish.svg"
+  },
+  {
+    "name": "Squidink (run ad break)",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "squidink.svg"
+  },
+  {
+    "name": "Salesmanfish (free channel point redeem)",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "salesmanfish.svg"
+  },
+  {
+    "name": "Badmapfish (free skip bad map)",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "badmapfish.svg"
+  },
+  {
+    "name": "GRANDPA?? (10s chat slowmode for 5m)",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "grandpa.svg"
+  },
+  {
+    "name": "Golden Fish",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "golden-fish.svg"
+  },
+  {
+    "name": "Crystal Fish",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "crystal-fish.svg"
+  },
+  {
+    "name": "Rainbow Fish",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "rainbow-fish.svg"
+  },
+  {
+    "name": "Ghost Fish",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "ghost-fish.svg"
+  },
+  {
+    "name": "Lava Fish",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "lava-fish.svg"
+  },
+  {
+    "name": "Ice Fish",
+    "tier": "LEGENDARY",
+    "id": "legendary",
+    "file": "ice-fish.svg"
+  },
+  {
+    "name": "Timesomeoneoutfor1minutefish",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "timesomeoneoutfor1minutefish.svg"
+  },
+  {
+    "name": "240kfish (plays nick raid song)",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "240kfish.svg"
+  },
+  {
+    "name": "Shieldfish (protect from next timeout)",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "shieldfish.svg"
+  },
+  {
+    "name": "Freesongrequestfish",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "freesongrequestfish.svg"
+  },
+  {
+    "name": "2x Luck (Lasts 10 minutes)",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "2x-luck.svg"
+  },
+  {
+    "name": "Great White Shark",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "great-white-shark.svg"
+  },
+  {
+    "name": "Hammerhead Shark",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "hammerhead-shark.svg"
+  },
+  {
+    "name": "Tiger Shark",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "tiger-shark.svg"
+  },
+  {
+    "name": "Manta Ray",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "manta-ray.svg"
+  },
+  {
+    "name": "Giant Squid",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "giant-squid.svg"
+  },
+  {
+    "name": "Nautilus",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "nautilus.svg"
+  },
+  {
+    "name": "Horseshoe Crab",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "horseshoe-crab.svg"
+  },
+  {
+    "name": "Lobster",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "lobster.svg"
+  },
+  {
+    "name": "Giant Crab",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "giant-crab.svg"
+  },
+  {
+    "name": "Blue Lobster",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "blue-lobster.svg"
+  },
+  {
+    "name": "Vampire Squid",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "vampire-squid.svg"
+  },
+  {
+    "name": "Whale Shark",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "whale-shark.svg"
+  },
+  {
+    "name": "Oarfish",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "oarfish.svg"
+  },
+  {
+    "name": "Coelacanth",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "coelacanth.svg"
+  },
+  {
+    "name": "Deep-Sea Dragonfish",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "deep-sea-dragonfish.svg"
+  },
+  {
+    "name": "Goblin Shark",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "goblin-shark.svg"
+  },
+  {
+    "name": "Sawfish",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "sawfish.svg"
+  },
+  {
+    "name": "Electric Ray",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "electric-ray.svg"
+  },
+  {
+    "name": "Sea Turtle",
+    "tier": "EPIC",
+    "id": "epic",
+    "file": "sea-turtle.svg"
+  },
+  {
+    "name": "kendricklamaar",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "kendricklamaar.svg"
+  },
+  {
+    "name": "dogwithdacoolglasses",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "dogwithdacoolglasses.svg"
+  },
+  {
+    "name": "duckwithflowerhat",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "duckwithflowerhat.svg"
+  },
+  {
+    "name": "cockfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "cockfish.svg"
+  },
+  {
+    "name": "peekayfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "peekayfish.svg"
+  },
+  {
+    "name": "trackmaniacar",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "trackmaniacar.svg"
+  },
+  {
+    "name": "slashedfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "slashedfish.svg"
+  },
+  {
+    "name": "intaxfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "intaxfish.svg"
+  },
+  {
+    "name": "biblo",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "biblo.svg"
+  },
+  {
+    "name": "joel",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "joel.svg"
+  },
+  {
+    "name": "scatterrfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "scatterrfish.svg"
+  },
+  {
+    "name": "shark",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "shark.svg"
+  },
+  {
+    "name": "Aethfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "aethfish.svg"
+  },
+  {
+    "name": "ibrafish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "ibrafish.svg"
+  },
+  {
+    "name": "creavesfish (smelly creaves)",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "creavesfish.svg"
+  },
+  {
+    "name": "anglerfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "anglerfish.svg"
+  },
+  {
+    "name": "deepseadiver",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "deepseadiver.svg"
+  },
+  {
+    "name": "ninjafish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "ninjafish.svg"
+  },
+  {
+    "name": "goldfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "goldfish.svg"
+  },
+  {
+    "name": "titanic",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "titanic.svg"
+  },
+  {
+    "name": "giantoceanicmantaray",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "giantoceanicmantaray.svg"
+  },
+  {
+    "name": "walterwhite",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "walterwhite.svg"
+  },
+  {
+    "name": "240nickscarbonnet",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "240nickscarbonnet.svg"
+  },
+  {
+    "name": "thebloop",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "thebloop.svg"
+  },
+  {
+    "name": "Arctic Char",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "arctic-char.svg"
+  },
+  {
+    "name": "Tiger Trout",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "tiger-trout.svg"
+  },
+  {
+    "name": "Koi",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "koi.svg"
+  },
+  {
+    "name": "Electric Eel",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "electric-eel.svg"
+  },
+  {
+    "name": "Pufferfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "pufferfish.svg"
+  },
+  {
+    "name": "Lionfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "lionfish.svg"
+  },
+  {
+    "name": "Angelfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "angelfish.svg"
+  },
+  {
+    "name": "Triggerfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "triggerfish.svg"
+  },
+  {
+    "name": "Butterflyfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "butterflyfish.svg"
+  },
+  {
+    "name": "Parrotfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "parrotfish.svg"
+  },
+  {
+    "name": "Swordfish",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "swordfish.svg"
+  },
+  {
+    "name": "Tuna",
+    "tier": "RARE",
+    "id": "rare",
+    "file": "tuna.svg"
+  },
+  {
+    "name": "Barracuda",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "barracuda.svg"
+  },
+  {
+    "name": "Grouper",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "grouper.svg"
+  },
+  {
+    "name": "Snapper",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "snapper.svg"
+  },
+  {
+    "name": "Moray Eel",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "moray-eel.svg"
+  },
+  {
+    "name": "Flying Fish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "flying-fish.svg"
+  },
+  {
+    "name": "Lanternfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "lanternfish.svg"
+  },
+  {
+    "name": "Needlefish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "needlefish.svg"
+  },
+  {
+    "name": "Stingray",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "stingray.svg"
+  },
+  {
+    "name": "Octopus",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "octopus.svg"
+  },
+  {
+    "name": "bass",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "bass.svg"
+  },
+  {
+    "name": "trout",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "trout.svg"
+  },
+  {
+    "name": "boot",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "boot.svg"
+  },
+  {
+    "name": "shrimp",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "shrimp.svg"
+  },
+  {
+    "name": "pollock",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "pollock.svg"
+  },
+  {
+    "name": "schmish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "schmish.svg"
+  },
+  {
+    "name": "bottleofjoe",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "bottleofjoe.svg"
+  },
+  {
+    "name": "duck",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "duck.svg"
+  },
+  {
+    "name": "duckling",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "duckling.svg"
+  },
+  {
+    "name": "nemo",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "nemo.svg"
+  },
+  {
+    "name": "clownfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "clownfish.svg"
+  },
+  {
+    "name": "tropicalfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "tropicalfish.svg"
+  },
+  {
+    "name": "catfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "catfish.svg"
+  },
+  {
+    "name": "dogfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "dogfish.svg"
+  },
+  {
+    "name": "fischfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "fischfish.svg"
+  },
+  {
+    "name": "yabbfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "yabbfish.svg"
+  },
+  {
+    "name": "mackerel",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "mackerel.svg"
+  },
+  {
+    "name": "roosterfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "roosterfish.svg"
+  },
+  {
+    "name": "copper",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "copper.svg"
+  },
+  {
+    "name": "axolotl",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "axolotl.svg"
+  },
+  {
+    "name": "salmon",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "salmon.svg"
+  },
+  {
+    "name": "robertlogia",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "robertlogia.svg"
+  },
+  {
+    "name": "frog",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "frog.svg"
+  },
+  {
+    "name": "deutschlandfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "deutschlandfish.svg"
+  },
+  {
+    "name": "squid",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "squid.svg"
+  },
+  {
+    "name": "neofish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "neofish.svg"
+  },
+  {
+    "name": "oldertimer",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "oldertimer.svg"
+  },
+  {
+    "name": "petahfihh",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "petahfihh.svg"
+  },
+  {
+    "name": "KoiKoi fish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "koikoi-fish.svg"
+  },
+  {
+    "name": "Speedrunnerfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "speedrunnerfish.svg"
+  },
+  {
+    "name": "tntfish",
+    "tier": "UNCOMMON",
+    "id": "uncommon",
+    "file": "tntfish.svg"
+  },
+  {
+    "name": "baldcap",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "baldcap.svg"
+  },
+  {
+    "name": "weave",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "weave.svg"
+  },
+  {
+    "name": "toupe",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "toupe.svg"
+  },
+  {
+    "name": "seaweed",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "seaweed.svg"
+  },
+  {
+    "name": "weed",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "weed.svg"
+  },
+  {
+    "name": "jellyfish",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "jellyfish.svg"
+  },
+  {
+    "name": "hook",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "hook.svg"
+  },
+  {
+    "name": "seahorse",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "seahorse.svg"
+  },
+  {
+    "name": "humanfoot",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "humanfoot.svg"
+  },
+  {
+    "name": "deadrat",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "deadrat.svg"
+  },
+  {
+    "name": "aliverat",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "aliverat.svg"
+  },
+  {
+    "name": "greggssausageroll",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "greggssausageroll.svg"
+  },
+  {
+    "name": "trash",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "trash.svg"
+  },
+  {
+    "name": "tasselledwobbegong",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "tasselledwobbegong.svg"
+  },
+  {
+    "name": "redlippedbatfish",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "redlippedbatfish.svg"
+  },
+  {
+    "name": "aspenfish",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "aspenfish.svg"
+  },
+  {
+    "name": "tylersmayhem",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "tylersmayhem.svg"
+  },
+  {
+    "name": "Bluegill",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "bluegill.svg"
+  },
+  {
+    "name": "Smallmouth Bass",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "smallmouth-bass.svg"
+  },
+  {
+    "name": "Largemouth Bass",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "largemouth-bass.svg"
+  },
+  {
+    "name": "Common Carp",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "common-carp.svg"
+  },
+  {
+    "name": "Minnow",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "minnow.svg"
+  },
+  {
+    "name": "Perch",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "perch.svg"
+  },
+  {
+    "name": "Roach",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "roach.svg"
+  },
+  {
+    "name": "Sardine",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "sardine.svg"
+  },
+  {
+    "name": "Anchovy",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "anchovy.svg"
+  },
+  {
+    "name": "Herring",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "herring.svg"
+  },
+  {
+    "name": "Cod",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "cod.svg"
+  },
+  {
+    "name": "Haddock",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "haddock.svg"
+  },
+  {
+    "name": "Flounder",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "flounder.svg"
+  },
+  {
+    "name": "Mullet",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "mullet.svg"
+  },
+  {
+    "name": "Smelt",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "smelt.svg"
+  },
+  {
+    "name": "Pike",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "pike.svg"
+  },
+  {
+    "name": "Walleye",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "walleye.svg"
+  },
+  {
+    "name": "Sunfish",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "sunfish.svg"
+  },
+  {
+    "name": "Crappie",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "crappie.svg"
+  },
+  {
+    "name": "Eel",
+    "tier": "COMMON",
+    "id": "common",
+    "file": "eel.svg"
+  }
+]

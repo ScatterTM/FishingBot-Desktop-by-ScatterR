@@ -1,0 +1,229 @@
+/* =====================================================================
+   UX overhaul layer (v2.6.1)
+
+   Loaded last on the homepage, after index.css and overlay-alerts.css.
+   Each block names the older rule it supersedes, so the cascade stays
+   readable. Colour, type and shape come from the tokens and rules in
+   docs/STYLE_GUIDE.md. No new hex or rgba values appear here.
+   ===================================================================== */
+
+
+/* ---------------------------------------------------------------------
+   1. Type floor
+   The guide's smallest label is 10px (section 3). These labels rendered
+   between 8 and 9.9px. Use absolute px: the site's rem is fluid (about
+   15px on phones), so a rem value here would drift below the floor.
+   --------------------------------------------------------------------- */
+.next-step-kicker,
+.tool-box-label,
+.luck-info-text,
+.tier-count-label,
+.tier-count-suffix,
+.masthead-meta span,
+.masthead-meta b,
+.micro-label,
+.top-bar .updates-label { font-size: 10px; }
+
+/* The toolbar button is 10px. The guide used to say 0.62rem, which is below
+   its own floor; section 5 now matches. */
+.dex-toolbar-btn { font-size: 10px; }
+
+/* Rules with more specificity (index.css, game-mode.css) set these smaller,
+   so the floor is repeated with matching or higher weight. */
+.tier-header .tier-name .tier-count-suffix,
+.tier-header .tier-pct small,
+html .top-bar .gm-install-btn { font-size: 10px; }
+
+
+/* ---------------------------------------------------------------------
+   2. Top bar colour roles
+   Brass is for values only (section 2). Updates is a secondary action,
+   so it takes the toolbar-button treatment, not the brass outline.
+   --------------------------------------------------------------------- */
+.top-bar .updates-btn {
+  border-color: var(--bone-24);
+  color: var(--bone-60);
+}
+.top-bar .updates-btn:hover,
+.top-bar .updates-btn:focus-visible {
+  background: var(--signal-08);
+  border-color: var(--signal-30);
+  color: var(--signal);
+  outline: none;
+}
+/* The install button's colours live in styles/game-mode.css. */
+
+
+/* ---------------------------------------------------------------------
+   3. Start-here steps
+   Was a flex row, so on phones the text after the bold phrase was split
+   into separate flex items and pushed to the far edge. Now a two-column
+   grid: a fixed number column, then the wrapping copy.
+   --------------------------------------------------------------------- */
+.start-here-steps li {
+  display: grid;
+  grid-template-columns: 1.9em minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: baseline;
+}
+.start-here-steps li > span { min-width: 0; }
+.start-here-steps li::before { min-width: 0; }
+
+
+/* ---------------------------------------------------------------------
+   4. State messages
+   Errors use the error tokens (sections 5 and 6), not the action colour.
+   Empty and loading states keep the neutral hairline.
+   --------------------------------------------------------------------- */
+.state-message--error {
+  border-left-color: var(--danger);
+  color: var(--danger-hi);
+}
+.state-message--error .ic { color: var(--danger-hi); }
+
+
+/* ---------------------------------------------------------------------
+   5. Phone header
+   Was a wrapping mess: a centred three-line status string, the install
+   button and operator login stacked in a column. Now three rows:
+     Row 1: the live Twitch status, left aligned, with the guide icon.
+     Row 2: Install app, full width (the one primary action).
+     Row 3: Updates and Operator login.
+   The wrapper around install and operator login is flattened so each
+   button can be ordered and sized on its own.
+   --------------------------------------------------------------------- */
+@media (max-width: 680px) {
+  /* The desktop gutter (40px a side) is wasted on a phone, and it had
+     been eating the width the header needs. */
+  .top-bar {
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    min-height: 0;
+    margin: 0;
+    padding: 10px 0;
+  }
+
+  /* Flatten both wrappers so every control is a direct flex item. */
+  .top-bar-left,
+  .top-bar .gm-right { display: contents; }
+
+  .top-bar .twitch-integration-btn {
+    order: 0;
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    line-height: 1.4;
+    padding-bottom: 2px;
+  }
+
+  .top-bar .gm-install-btn {
+    order: 1;
+    flex: 1 1 100%;
+    justify-content: center;
+    min-height: 42px;
+    margin: 0;
+  }
+
+  .top-bar .updates-btn,
+  .top-bar .admin-login-btn {
+    order: 2;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    white-space: nowrap;
+    min-height: 42px;
+    justify-content: center;
+    margin: 0 !important;
+    border: 1px solid var(--bone-24) !important;
+    padding: 0 10px !important;
+  }
+  /* The guide icon shares row 1 with the status text, which leaves row 3
+     room for Updates and Operator login. */
+  .top-bar .guide-top-btn { order: 0; flex: 0 0 42px; height: 42px; width: 42px; }
+
+  /* Updates keeps its label on phones: a bare bell is ambiguous. */
+}
+
+
+/* ---------------------------------------------------------------------
+   6. Focus and keyboard
+   Every control gets a visible outline, not only a colour change.
+   Guide section 6: focus-visible is the hover treatment plus an outline.
+   --------------------------------------------------------------------- */
+.top-bar .twitch-integration-btn:focus-visible,
+.top-bar .admin-login-btn:focus-visible,
+.dex-toolbar-btn:focus-visible,
+.tab-btn:focus-visible,
+.sub-tab-btn:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+
+/* ---------------------------------------------------------------------
+   7. Tier headers on phones
+   The tier name and its percentage did not fit one line in a phone card,
+   so the percentage ran past the card edge (it was clipped at 360 to 390px).
+   Let it wrap to its own line, aligned right.
+   --------------------------------------------------------------------- */
+@media (max-width: 680px) {
+  /* The phone bottom bar's labels are the only tab labels below 10px. */
+  .nav-pill-container .tab-btn { font-size: 10px; }
+  .tier-header { flex-wrap: wrap; row-gap: 4px; }
+  .tier-header .tier-pct { margin-left: auto; }
+}
+
+
+/* ---------------------------------------------------------------------
+   8. Operator and admin: selected state
+   The admin screens used brass for their active tab, selected segments,
+   and the signed-in state. The guide reserves brass for values, orange
+   for selected state, and verdigris for "connected". Brass is only for
+   values now.
+   --------------------------------------------------------------------- */
+#adminTabBtn.active,
+#adminTabBtn.active .ic { color: var(--signal); }
+#adminTabBtn.active { border-bottom-color: var(--signal); }
+#admin-view .vault-tab-btn.active {
+  background: var(--signal-08);
+  color: var(--signal);
+  box-shadow: inset 0 -2px 0 var(--signal);
+}
+.masteradmin-nav-btn.active .masteradmin-nav-index { color: var(--signal); }
+.mode-toggle-btn.active { background: var(--signal-08); color: var(--signal); box-shadow: inset 0 -2px 0 var(--signal); }
+.hub-nav-btn.active::after { color: var(--signal); }
+.area-card.selected { border-color: var(--signal-30); }
+.autofish-trophy-toggle.is-on .autofish-trophy-toggle__title { color: var(--signal-hi); }
+/* Signed in is a connected state, so the sign-out button is verdigris. */
+.top-bar .admin-login-btn.is-live { color: var(--verdigris-hi); }
+
+
+/* ---------------------------------------------------------------------
+   9. Admin sidebar on phones
+   Four sections share one row. "Broadcasters 02" needed 125px and got
+   112px, so its label was clipped. Each section now keeps its width and
+   the row scrolls sideways instead.
+   --------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  .masteradmin-sidebar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .masteradmin-nav-btn { flex: 0 0 auto; min-width: 136px; white-space: nowrap; }
+}
+
+
+/* ---------------------------------------------------------------------
+   10. Admin button labels on phones
+   Event and cooldown buttons measured 9.3 to 9.6px at phone width (the
+   site's rem is fluid). Desktop already measures above the floor, so the
+   floor is applied on phones only.
+   --------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  #admin-view .mode-toggle-btn,
+  #admin-view .success-btn,
+  #admin-view .danger-btn,
+  #admin-view .info-btn { font-size: 10px; }
+}
+

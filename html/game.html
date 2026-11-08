@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#050807">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="/game.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/game-192.png">
+<link rel="apple-touch-icon" href="/icons/game-512.png">
+<title>Fishy Fishing · Game</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' wss://irc-ws.chat.twitch.tv:443; img-src 'self' data: https://static-cdn.jtvnw.net; base-uri 'self'; form-action 'self'; frame-ancestors 'self';">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@10..48,500;10..48,700;10..48,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink-000:#050807; --ink-050:#0A0E0D; --ink-100:#0F1513; --ink-150:#131A18; --ink-300:#212C29;
+    --bone:#EDE8DC; --bone-80:rgba(237,232,220,.80); --bone-60:rgba(237,232,220,.60);
+    --bone-40:rgba(237,232,220,.40); --bone-24:rgba(237,232,220,.24); --bone-12:rgba(237,232,220,.12);
+    --bone-04:rgba(237,232,220,.04);
+    --signal:#E4572E; --signal-hi:#F2703F; --signal-08:rgba(228,87,46,.08); --signal-38:rgba(228,87,46,.38);
+    --brass:#C9A227; --brass-hi:#E0BC46;
+    --verdigris-hi:#43A08C; --warn:#C9902B; --danger-hi:#DD705F;
+    /* Canonical fish rarity colors, shared with the main site. */
+    --tier-secret:#F4F0E6; --tier-godly:#E1452C; --tier-legendary:#DFA62C; --tier-epic:#C4703A;
+    --tier-rare:#8C9A72; --tier-uncommon:#4E7A60; --tier-common:#6A6E68; --tier-treasury:#2F7D6E;
+    --tier-secret-hi:#F4F0E6; --tier-godly-hi:#E76B57; --tier-legendary-hi:#DFA62C; --tier-epic-hi:#CA7E4C;
+    --tier-rare-hi:#8C9A72; --tier-uncommon-hi:#639C7A; --tier-common-hi:#8E928C; --tier-treasury-hi:#3CA18D;
+    --font-display:'Bricolage Grotesque','Archivo',Georgia,serif;
+    --font-body:'Archivo','Helvetica Neue',Helvetica,sans-serif;
+    --font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    /* Derived tints, built from the tokens above so no literal colour is needed. */
+    --verdigris-line: color-mix(in srgb, var(--verdigris-hi) 40%, transparent);
+    --brass-tint: color-mix(in srgb, var(--brass) 10%, transparent);
+    --warn-tint: color-mix(in srgb, var(--warn) 6%, transparent);
+    /* Motion: short and eased, per the style guide. */
+    --dur: 130ms;
+    --ease-out: cubic-bezier(.2,.7,.2,1);
+  }
+
+  *, *::before, *::after { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body {
+    background:var(--ink-000); color:var(--bone);
+    font:14px/1.5 var(--font-body); -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column; overflow:hidden;
+    height:100vh; height:100dvh;
+  }
+  [hidden] { display:none !important; }
+  #app { display:flex; flex-direction:column; flex:1; min-height:0; width:100%; }
+  .ic { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.5; flex:0 0 16px; }
+  .mono { font-family:var(--font-mono); letter-spacing:.12em; text-transform:uppercase; font-size:10px; }
+  :focus-visible { outline:2px solid var(--signal); outline-offset:2px; }
+
+  /* ---------- Header ---------- */
+  header {
+    display:flex; align-items:center; gap:12px;
+    padding:calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+    border-bottom:1px solid var(--bone-12); background:var(--ink-100);
+  }
+  .brand { display:flex; align-items:center; gap:10px; min-width:0; }
+  .brand-mark {
+    width:32px; height:32px; flex:0 0 32px;
+    border:1px solid var(--signal-38); color:var(--signal);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .brand-mark .ic { width:20px; height:20px; flex-basis:20px; }
+  .brand h1 { margin:0; font:700 16px/1.1 var(--font-display); letter-spacing:-.01em; }
+  .brand p { margin:2px 0 0; color:var(--bone-40); font:10px var(--font-mono); letter-spacing:.12em; text-transform:uppercase; }
+
+  .who { margin-left:auto; display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; min-width:0; }
+  .who-text {
+    font:10px var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--bone-40);
+    max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .chip-live {
+    display:inline-flex; align-items:center; gap:6px;
+    font:600 10px var(--font-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--verdigris-hi);
+  }
+  .chip-live::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--verdigris-hi); }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    font:600 11px/1 var(--font-mono); letter-spacing:.12em; text-transform:uppercase;
+    min-height:32px; padding:8px 0 6px; border:0; border-bottom:1px solid var(--bone-24);
+    background:none; color:var(--bone-60); cursor:pointer; text-decoration:none;
+    display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+    transition:color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .btn:hover:not(:disabled) { color:var(--signal); border-bottom-color:var(--signal); }
+  .btn.solid {
+    min-height:40px; padding:10px 16px; justify-content:center;
+    background:var(--signal); border:1px solid var(--signal); color:var(--ink-000);
+  }
+  .btn.solid:hover:not(:disabled) { background:var(--signal-hi); border-color:var(--signal-hi); color:var(--ink-000); }
+  .btn.macro {
+    min-width:88px; min-height:40px; padding:10px 12px; justify-content:center;
+    border:1px solid var(--signal-38); color:var(--signal-hi);
+  }
+  .btn.macro:hover:not(:disabled) { border-color:var(--signal); background:var(--signal-08); color:var(--signal-hi); }
+  .btn:disabled { opacity:.4; cursor:default; }
+  .btn .ic { width:14px; height:14px; flex-basis:14px; }
+  a.btn { text-decoration:none; }
+
+  /* ---------- Channel bar ---------- */
+  .channel-bar {
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    padding:10px 14px; border-bottom:1px solid var(--bone-12);
+  }
+  .field {
+    flex:1 1 180px; min-width:0; min-height:40px;
+    display:flex; align-items:center; gap:8px;
+    border:1px solid var(--bone-24); background:var(--ink-050); padding:0 10px;
+    transition:border-color var(--dur) var(--ease-out);
+  }
+  .field:focus-within { border-color:var(--signal); }
+  .field .ic { color:var(--bone-40); }
+  .field select, .field input {
+    flex:1; min-width:0; border:0; background:transparent; color:var(--bone);
+    font:12px var(--font-mono); padding:10px 0; outline:none;
+  }
+  .field select { cursor:pointer; }
+  .field select:disabled { cursor:default; opacity:.5; }
+  .field select option { background:var(--ink-100); color:var(--bone); }
+  .status {
+    font:10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase;
+    color:var(--bone-40); display:flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .status::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; flex:0 0 6px; }
+  .status.on { color:var(--verdigris-hi); }
+
+  /* ---------- Tabs ---------- */
+  nav[role="tablist"] { display:flex; border-bottom:1px solid var(--bone-12); background:var(--ink-100); }
+  .tab {
+    flex:1 1 0; min-width:0; min-height:52px; padding:8px 2px 7px;
+    border:0; border-bottom:2px solid transparent; background:transparent;
+    color:var(--bone-60); cursor:pointer;
+    font:600 10px/1.2 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    transition:color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .tab .ic { width:16px; height:16px; flex-basis:16px; }
+  .tab:hover { color:var(--bone); }
+  .tab[aria-selected="true"] { color:var(--bone); border-bottom-color:var(--signal); background:var(--signal-08); }
+  .tab:focus-visible { outline-offset:-2px; }
+
+  /* ---------- Panels ---------- */
+  main { flex:1; min-height:0; display:flex; }
+  .panel { flex:1; min-height:0; display:none; flex-direction:column; overflow:hidden; }
+  .panel.active { display:flex; }
+  .panel-head { padding:14px 16px 12px; border-bottom:1px solid var(--bone-12); }
+  .panel-head h2 { margin:0 0 2px; font:700 17px/1.2 var(--font-display); letter-spacing:-.01em; }
+  .panel-head p { margin:0; color:var(--bone-60); font-size:12px; }
+  .scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:12px 16px 20px; }
+
+  /* ---------- Chat ---------- */
+  .chat-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .chat-live-mark {
+    flex:0 0 auto; border:1px solid var(--bone-12); padding:5px 8px;
+    color:var(--bone-40); font:700 10px/1 var(--font-mono); letter-spacing:.1em;
+  }
+  .chat-live-mark.live { color:var(--verdigris-hi); border-color:var(--verdigris-line); }
+  .chat-live-mark.connecting { color:var(--warn); border-color:color-mix(in srgb, var(--warn) 40%, transparent); }
+  .chat-live-mark.error { color:var(--danger-hi); border-color:color-mix(in srgb, var(--danger-hi) 40%, transparent); }
+
+  #chat { display:flex; flex-direction:column; gap:2px; }
+  .msg {
+    display:flex; gap:10px; align-items:flex-start;
+    padding:8px 10px; margin:0 -6px; border-left:2px solid transparent;
+    transition:background var(--dur) var(--ease-out);
+  }
+  .msg:hover { background:var(--bone-04); }
+  .msg.fish { border-left-color:var(--signal); background:var(--signal-08); }
+  .msg.rarity { border-left-color:var(--rarity-color); background:color-mix(in srgb, var(--rarity-color) 8%, transparent); }
+  .msg-avatar {
+    flex:0 0 28px; width:28px; height:28px; margin-top:1px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--ink-000); font:700 12px var(--font-display);
+  }
+  .msg-body { min-width:0; flex:1; }
+  .msg-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+  .msg-meta .name { font:700 13px var(--font-display); overflow-wrap:anywhere; }
+  .msg-time { margin-left:auto; font:10px var(--font-mono); letter-spacing:.04em; color:var(--bone-40); white-space:nowrap; }
+  .msg-text { margin-top:2px; font-size:13px; line-height:1.5; color:var(--bone-80); word-break:break-word; }
+  .tag {
+    display:inline-block; font:700 10px/1 var(--font-mono); letter-spacing:.12em;
+    color:var(--signal); border:1px solid var(--signal-38); padding:3px 5px;
+  }
+  .rarity-chip {
+    display:inline-flex; align-items:center; margin-right:6px; padding:2px 5px;
+    border:1px solid color-mix(in srgb, var(--rarity-color) 55%, transparent);
+    color:var(--rarity-hi, var(--rarity-color));
+    font:700 10px/1 var(--font-mono); letter-spacing:.12em; text-transform:uppercase;
+  }
+  .rarity-secret { --rarity-color:var(--tier-secret); --rarity-hi:var(--tier-secret-hi); }
+  .rarity-godly { --rarity-color:var(--tier-godly); --rarity-hi:var(--tier-godly-hi); }
+  .rarity-legendary { --rarity-color:var(--tier-legendary); --rarity-hi:var(--tier-legendary-hi); }
+  .rarity-epic { --rarity-color:var(--tier-epic); --rarity-hi:var(--tier-epic-hi); }
+  .rarity-rare { --rarity-color:var(--tier-rare); --rarity-hi:var(--tier-rare-hi); }
+  .rarity-uncommon { --rarity-color:var(--tier-uncommon); --rarity-hi:var(--tier-uncommon-hi); }
+  .rarity-common { --rarity-color:var(--tier-common); --rarity-hi:var(--tier-common-hi); }
+  .rarity-treasury { --rarity-color:var(--tier-treasury); --rarity-hi:var(--tier-treasury-hi); }
+  .tier-rarity { color:var(--rarity-hi, var(--rarity-color)); border-color:color-mix(in srgb, var(--rarity-color) 55%, transparent); }
+  .tier-rarity-name { color:var(--rarity-hi, var(--rarity-color)); }
+
+  .chat-empty {
+    min-height:260px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:6px; padding:24px; color:var(--bone-40);
+  }
+  .chat-empty[hidden] { display:none; }
+  .chat-empty-icon {
+    width:48px; height:48px; margin-bottom:6px; border:1px solid var(--bone-12); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; color:var(--bone-40);
+  }
+  .chat-empty strong { color:var(--bone-80); font:600 14px var(--font-body); }
+  .chat-empty span { max-width:280px; font-size:12px; line-height:1.5; }
+  .new-messages {
+    position:sticky; bottom:8px; display:block; margin:8px auto 0;
+    border:1px solid var(--signal-38); background:var(--ink-100); color:var(--signal-hi);
+    padding:8px 12px; font:700 10px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+  }
+  .new-messages:hover { border-color:var(--signal); }
+
+  /* ---------- Composer ---------- */
+  .composer {
+    border-top:1px solid var(--bone-12); background:var(--ink-100);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .composer-row { display:flex; gap:8px; }
+  .composer input {
+    flex:1; min-width:0; min-height:40px; padding:10px 12px;
+    border:1px solid var(--bone-24); background:var(--ink-050); color:var(--bone);
+    font:14px var(--font-body); outline:none;
+    transition:border-color var(--dur) var(--ease-out);
+  }
+  .composer input::placeholder { color:var(--bone-40); }
+  .composer input:focus { border-color:var(--signal); }
+  .composer input:disabled { opacity:.5; }
+  .composer-note {
+    margin:8px 0 0; min-height:14px;
+    font:10px/1.5 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--bone-40);
+  }
+  .composer-note.err { color:var(--danger-hi); }
+  .composer-note.ok { color:var(--verdigris-hi); }
+  .composer-note a { color:var(--signal); text-decoration:none; border-bottom:1px solid var(--signal-38); }
+  .composer-note a:hover { border-bottom-color:var(--signal); }
+  .char-count { display:block; margin-top:4px; text-align:right; font:10px var(--font-mono); letter-spacing:.06em; color:var(--bone-40); }
+  .char-count.warn { color:var(--warn); }
+  .char-count.full { color:var(--danger-hi); }
+
+  /* ---------- Leaderboard ---------- */
+  .board-meta {
+    display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;
+    font:10px var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--bone-40);
+  }
+  .table { width:100%; border-collapse:collapse; font-size:13px; }
+  .table th {
+    text-align:left; padding:8px 10px; border-bottom:1px solid var(--bone-12);
+    font:600 10px var(--font-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--bone-40);
+  }
+  .table td { padding:10px; border-bottom:1px solid var(--bone-12); transition:background var(--dur) var(--ease-out); }
+  .table td.num, .table th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .table td:first-child, .table th:first-child { width:64px; }
+  .table tbody tr:nth-child(1) td { background:var(--brass-tint); }
+  .table tbody tr:nth-child(2) td { background:var(--bone-04); }
+  .table tbody tr:nth-child(3) td { background:var(--warn-tint); }
+  .table tbody tr:hover td { background:var(--bone-04); }
+  .rank { font:600 11px var(--font-mono); color:var(--bone-40); }
+  .rank.top { color:var(--bone); }
+
+  /* ---------- Cards and grids (loot, more) ---------- */
+  .grid, .feature-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; }
+  .card {
+    display:flex; flex-direction:column; padding:14px;
+    border:1px solid var(--bone-12); border-left:2px solid var(--rarity-color, var(--bone-12));
+    background:var(--ink-100);
+    transition:border-color var(--dur) var(--ease-out);
+  }
+  .card:hover { border-color:var(--bone-24); border-left-color:var(--rarity-color, var(--bone-24)); }
+  .card .icon {
+    width:34px; height:34px; margin-bottom:12px; border:1px solid var(--bone-12);
+    display:flex; align-items:center; justify-content:center; color:var(--signal);
+  }
+  .card h3 { margin:0 0 4px; font:700 16px/1.2 var(--font-display); }
+  .card p { margin:0; color:var(--bone-60); font-size:12px; }
+  .card ul { margin:10px 0 0; padding-left:16px; color:var(--bone-60); font-size:12px; }
+  .card li + li { margin-top:2px; }
+  .tier {
+    display:inline-block; align-self:flex-start; margin-bottom:10px; padding:3px 7px;
+    font:700 10px/1 var(--font-mono); letter-spacing:.12em; text-transform:uppercase;
+    border:1px solid var(--signal-38); color:var(--signal);
+  }
+  .cta { margin-top:16px; display:flex; gap:12px; flex-wrap:wrap; }
+
+  /* ---------- Perks and Auto-Fish ---------- */
+  .perk-group { margin-bottom:16px; padding:0 14px; border:1px solid var(--bone-12); background:var(--ink-100); }
+  .perk-group-title {
+    margin:0 -14px; padding:9px 14px; border-bottom:1px solid var(--bone-12);
+    font:700 10px var(--font-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--bone-60);
+  }
+  .perk-group .perk-row:last-child { border-bottom:0; }
+  .custom-fish-perk { padding:11px 0; border-bottom:1px solid var(--bone-12); }
+  .custom-fish-perk:last-child { border-bottom:0; }
+  .custom-fish-perk b { display:block; font:600 13px/1.35 var(--font-body); }
+  .custom-fish-perk p { margin:4px 0; color:var(--bone-60); font-size:12px; line-height:1.45; }
+  .custom-fish-perk small { color:var(--bone-40); font:11px var(--font-mono); }
+  .perk-row {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    min-height:56px; padding:12px 0; border-bottom:1px solid var(--bone-12);
+  }
+  .perk-row:last-child { border-bottom:0; }
+  .perk-row b { display:block; font:600 14px/1.3 var(--font-body); }
+  .perk-row small { display:block; margin-top:2px; color:var(--bone-40); font-size:12px; }
+  .row-btns { display:flex; gap:8px; flex-shrink:0; }
+  .inline-select {
+    min-width:150px; max-width:55%; min-height:40px; padding:8px 10px;
+    border:1px solid var(--bone-24); border-radius:0; background:var(--ink-050);
+    color:var(--bone); font:12px var(--font-mono);
+  }
+  .inline-select option { background:var(--ink-100); }
+  .inline-select:disabled { opacity:.4; }
+  .switch {
+    position:relative; width:44px; height:24px; flex-shrink:0; padding:0; cursor:pointer;
+    border:1px solid var(--bone-24); background:var(--ink-050);
+    transition:border-color var(--dur) var(--ease-out);
+  }
+  .switch span {
+    position:absolute; top:3px; left:3px; width:16px; height:16px; background:var(--bone-40);
+    transition:left var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .switch[aria-checked="true"] { border-color:var(--verdigris-hi); }
+  .switch[aria-checked="true"] span { left:23px; background:var(--verdigris-hi); }
+  .switch:disabled { opacity:.4; cursor:default; }
+  .fortune-card { margin-top:10px; padding-bottom:12px; }
+  .fortune-bar { height:8px; margin:12px 0 10px; border:1px solid var(--bone-12); background:var(--ink-050); }
+  .fortune-bar span { display:block; height:100%; background:var(--brass-hi); }
+  .fortune-meta { margin:0 0 4px; color:var(--bone-60); font-size:12px; }
+  .section-h {
+    margin:22px 0 8px; font:600 10px var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--bone-40);
+  }
+
+  /* ---------- States ---------- */
+  .loading {
+    margin:0; padding:14px 0; color:var(--bone-40);
+    font:11px/1.6 var(--font-mono); letter-spacing:.1em; text-transform:uppercase;
+  }
+  .error {
+    margin:0 0 10px; padding:12px 14px;
+    border:1px solid var(--danger-hi); color:var(--danger-hi); font-size:13px;
+  }
+  .error + .btn { margin-top:4px; }
+
+  /* ---------- Install and installed panels ---------- */
+  #installPanel, #installedPanel {
+    flex:1; display:flex; align-items:center; justify-content:center; overflow:auto; padding:24px;
+  }
+  .install-card {
+    width:100%; max-width:360px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center;
+  }
+  .install-card .brand-mark { width:48px; height:48px; flex-basis:48px; }
+  .install-card .brand-mark .ic { width:28px; height:28px; flex-basis:28px; }
+  .install-card h2 { margin:8px 0 0; font:700 20px/1.2 var(--font-display); }
+  .install-card p { margin:0; color:var(--bone-60); font-size:14px; }
+  .install-card .btn.solid { width:100%; }
+  .install-card .composer-note { min-height:0; font:12px/1.5 var(--font-body); letter-spacing:.02em; text-transform:none; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:640px) {
+    header { flex-wrap:wrap; }
+    .who { margin-left:0; width:100%; justify-content:space-between; }
+    .who-text { max-width:none; flex:1 1 auto; }
+  }
+  @media (max-width:520px) {
+    .tab { min-height:52px; }
+    .btn { min-height:40px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-bubble" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 4.4h15.6v11.2H10l-4.8 4v-4H4.2V4.4Z"/><path d="M8 9h8M8 12.2h5.2"/></symbol><symbol id="i-twitch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 2.5h17v11.9l-4.1 4.1h-3.3l-2.6 2.5H7.9v-2.5H3.5V2.5Z"/><path d="M11 7v5.2M15.6 7v5.2"/></symbol><symbol id="i-loot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 7.4 12 3.2l8.8 4.2v9.2L12 20.8l-8.8-4.2V7.4Z"/><path d="M3.2 7.4 12 11.6l8.8-4.2M12 11.6v9.2"/></symbol><symbol id="i-rank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5h17"/><path d="M6 20.5V13M10.7 20.5V8.5M15.3 20.5v-9M20 20.5V4.5"/></symbol><symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.9"/><path d="M4.6 20.4a7.4 7.4 0 0 1 14.8 0"/></symbol><symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="10.2" width="15.2" height="10.4" rx="1"/><path d="M8 10.2V7.6a4 4 0 0 1 8 0v2.6"/><path d="M12 14.2v2.6"/></symbol><symbol id="i-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 9.4h16.8V20a1.4 1.4 0 0 1-1.4 1.4H5A1.4 1.4 0 0 1 3.6 20V9.4Z"/><path d="M3 9.4 5.2 3.8h13.6L21 9.4"/><path d="M9.4 21.4v-6.2h5.2v6.2"/></symbol><symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.2h5.4A2.6 2.6 0 0 1 12 6.8v13a2.2 2.2 0 0 0-2.2-2.2H4V4.2Z"/><path d="M20 4.2h-5.4A2.6 2.6 0 0 0 12 6.8v13a2.2 2.2 0 0 1 2.2-2.2H20V4.2Z"/></symbol><symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.2 3.6h4.4a1.8 1.8 0 0 1 1.8 1.8v13.2a1.8 1.8 0 0 1-1.8 1.8h-4.4"/><path d="M9.6 8 13.4 12l-3.8 4"/><path d="M13.4 12H3.6"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.6 2.4 5.2 13.4h5.4L9.6 21.6 19 10.4h-6.2l.8-8Z"/></symbol><symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 6.9v10.2"/><path d="M14.6 9.3c-.6-.8-1.6-1.2-2.6-1.2-1.5 0-2.5.8-2.5 1.9 0 2.7 5.2 1.3 5.2 3.9 0 1.2-1.1 2-2.6 2-1.1 0-2.1-.5-2.7-1.3"/></symbol><symbol id="i-coin-stack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6.6" rx="7.4" ry="3"/><path d="M4.6 6.6v4.6c0 1.7 3.3 3 7.4 3s7.4-1.3 7.4-3V6.6"/><path d="M4.6 11.2v4.6c0 1.7 3.3 3 7.4 3s7.4-1.3 7.4-3v-4.6"/></symbol><symbol id="i-clover" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11.4C9.2 11.4 7.4 10.3 7.4 8.4A2.5 2.5 0 0 1 9.9 5.9c2 0 2.1 3.3 2.1 5.5Z"/><path d="M12 11.4c2.8 0 4.6-1.1 4.6-3a2.5 2.5 0 0 0-2.5-2.5c-2 0-2.1 3.3-2.1 5.5Z"/><path d="M12 12.6c-2.8 0-4.6 1.1-4.6 3a2.5 2.5 0 0 0 2.5 2.5c2 0 2.1-3.3 2.1-5.5Z"/><path d="M12 12.6c2.8 0 4.6 1.1 4.6 3a2.5 2.5 0 0 1-2.5 2.5c-2 0-2.1-3.3-2.1-5.5Z"/><path d="M12 12v9"/></symbol><symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 6.8V12l3.4 2"/></symbol><symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="0.9"/></symbol><symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.8 12.6 8l5.2 1.6L12.6 11.2 11 16.4 9.4 11.2 4.2 9.6 9.4 8 11 2.8Z"/><path d="m18.2 15.2.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z"/></symbol><symbol id="i-fish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 12c1.5-2.3 3.4-3.5 5.7-3.5s4.2 1.2 5.7 3.5c-1.5 2.3-3.4 3.5-5.7 3.5S8.1 14.3 6.6 12Z"/><path d="M18 12 21.6 9.4v5.2L18 12Z"/><path d="M9.7 10.9h.01"/></symbol><symbol id="i-fishy-treat" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16c2.4-4.6 6.1-7 10.6-7s8.2 2.4 10.6 7c-2.4 4.6-6.1 7-10.6 7s-8.2-2.4-10.6-7Z" fill="rgba(222,150,62,.28)" stroke="#C9902B"/><path d="M25.4 16 30 11.6v8.8L25.4 16Z" fill="rgba(222,150,62,.28)" stroke="#C9902B"/><circle cx="10.4" cy="14.2" r="1.2" fill="#C9902B" stroke="none"/><path d="M16.2 11.8v8.4M19.6 12.6v6.8" stroke="#C9902B" stroke-width="1.3"/><circle cx="13.2" cy="18.4" r=".7" fill="#C9902B" stroke="none"/><circle cx="22.2" cy="14" r=".7" fill="#C9902B" stroke="none"/></symbol><symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.6h.01"/></symbol><symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 6.2 17.8 17.8M17.8 6.2 6.2 17.8"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 12.4 9.6 17.4 19.4 6.6"/></symbol><symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 21.4 20.2H2.6L12 3.4Z"/><path d="M12 9.4v4.6M12 17.2h.01"/></symbol><symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 7.4h5M12.4 7.4h8.2M3.4 16.6h8.2M15.6 16.6h5"/><circle cx="10.2" cy="7.4" r="2.2"/><circle cx="13.4" cy="16.6" r="2.2"/></symbol><symbol id="i-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5.6v4.8h-4.8"/><path d="M4 18.4v-4.8h4.8"/><path d="M19.1 10.4a7.6 7.6 0 0 0-12.9-3L4 9.6"/><path d="M4.9 13.6a7.6 7.6 0 0 0 12.9 3l2.2-2.2"/></symbol><symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.6" cy="10.6" r="6.4"/><path d="M15.3 15.3 20.2 20.2"/></symbol><symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.6V11a6 6 0 0 1 12 0v5.6l1.6 2H4.4l1.6-2Z"/><path d="M10 21a2.2 2.2 0 0 0 4 0"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.4 3.8h9.2v5.2a4.6 4.6 0 0 1-9.2 0V3.8Z"/><path d="M7.4 5.4H4.6v1.8a3.4 3.4 0 0 0 3.2 3.4"/><path d="M16.6 5.4h2.8v1.8a3.4 3.4 0 0 1-3.2 3.4"/><path d="M12 13.6v3.6"/><path d="M8.4 20.6h7.2l-1-3.4H9.4l-1 3.4Z"/></symbol><symbol id="i-medal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="5.4"/><path d="M8.6 10.2 6.2 3.4h11.6l-2.4 6.8"/></symbol><symbol id="i-infinity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 8.4a5.4 5.4 0 1 0 0 7.2c1.2-1.2 6-5.4 7.2-7.2a5.4 5.4 0 1 1 0 7.2c-1.2-1.2-6-5.4-7.2-7.2Z"/></symbol><symbol id="i-void" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 20.8 12 12 20.8 3.2 12 12 3.2Z"/><circle cx="12" cy="12" r="1.2"/></symbol><symbol id="i-rod" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 21.6 12.6 11.4"/><path d="M10.2 7.4c3.4-2.9 7.8-3.5 11.2-2.6"/><path d="M19.2 2.6v3.4h3.4"/><path d="m15.6 8.6-1.6 1.6"/><path d="M14 10.2c-1.3 1.1-.7 3.1.7 3.1"/></symbol><symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/><path d="M12 3.4c2.5 2.4 3.8 5.3 3.8 8.6s-1.3 6.2-3.8 8.6c-2.5-2.4-3.8-5.3-3.8-8.6S9.5 5.8 12 3.4Z"/></symbol></defs></svg>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"><svg class="ic"><use href="#i-fish"></use></svg></div>
+    <div>
+      <h1>Fishy Fishing</h1>
+      <p>Game window</p>
+    </div>
+  </div>
+  <div class="who" id="who">
+    <span class="who-text" id="whoText">Checking session…</span>
+    <span id="whoActions"></span>
+    <button class="btn" type="button" id="pinBtn" hidden>Pop out</button>
+    <button class="btn" type="button" id="installBtn" hidden>Install app</button>
+  </div>
+</header>
+
+<div class="channel-bar">
+  <label class="field" for="channel">
+    <svg class="ic" aria-hidden="true"><use href="#i-twitch"></use></svg>
+    <select id="channel" aria-label="Broadcaster channel"><option value="">Choose a broadcaster</option></select>
+  </label>
+  <span id="status" class="status">Choose a broadcaster</span>
+  <button id="connectBtn" class="btn" type="button" hidden>Reconnect</button>
+</div>
+
+<nav role="tablist" aria-label="Sections">
+  <button class="tab" role="tab" id="tab-chat" aria-controls="panel-chat" data-tab="chat" aria-selected="true" tabindex="0"><svg class="ic" aria-hidden="true"><use href="#i-bubble"></use></svg>Chat</button>
+  <button class="tab" role="tab" id="tab-leaderboard" aria-controls="panel-leaderboard" data-tab="leaderboard" aria-selected="false" tabindex="-1" title="Leaderboard"><svg class="ic" aria-hidden="true"><use href="#i-rank"></use></svg>Board</button>
+  <button class="tab" role="tab" id="tab-loot" aria-controls="panel-loot" data-tab="loot" aria-selected="false" tabindex="-1" title="Loot table"><svg class="ic" aria-hidden="true"><use href="#i-loot"></use></svg>Loot</button>
+  <button class="tab" role="tab" id="tab-perks" aria-controls="panel-perks" data-tab="perks" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"></use></svg>Perks</button>
+  <button class="tab" role="tab" id="tab-more" aria-controls="panel-more" data-tab="more" aria-selected="false" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-sliders"></use></svg>More</button>
+</nav>
+
+<main>
+  <!-- CHAT -->
+  <section class="panel active" id="panel-chat" role="tabpanel" aria-labelledby="tab-chat">
+    <div class="panel-head chat-head">
+      <div>
+        <h2>Live chat</h2>
+        <p id="chatSubtitle" aria-live="polite">Choose a broadcaster to start watching.</p>
+      </div>
+      <span class="chat-live-mark" id="chatLiveMark">OFFLINE</span>
+    </div>
+    <div class="scroll" id="chatScroll" role="log" aria-label="Live chat messages" aria-live="off">
+      <div id="chatEmpty" class="chat-empty">
+        <div class="chat-empty-icon"><svg class="ic" aria-hidden="true"><use href="#i-bubble"></use></svg></div>
+        <strong id="chatEmptyTitle">Waiting for a channel</strong>
+        <span id="chatEmptyCopy">Pick a broadcaster above and chat will open automatically.</span>
+      </div>
+      <div id="chat"></div>
+      <button id="newMessagesBtn" class="new-messages" type="button" hidden>↓ New messages</button>
+    </div>
+    <div class="composer" id="composer">
+      <div class="composer-row">
+        <button id="macroFishBtn" class="btn macro" type="button" title="Send !fish to the channel" aria-label="Send !fish" disabled><svg class="ic" aria-hidden="true"><use href="#i-fish"></use></svg><span>!fish</span></button>
+        <input id="sendInput" aria-label="Chat message" placeholder="Choose a channel first" maxlength="500" autocomplete="off" disabled>
+        <button id="sendBtn" class="btn solid" type="button" disabled>Send</button>
+      </div>
+      <p class="composer-note" id="composerNote"></p>
+      <span class="char-count" id="charCount" aria-live="polite" hidden></span>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="panel" id="panel-leaderboard" role="tabpanel" aria-labelledby="tab-leaderboard">
+    <div class="panel-head"><h2>Top anglers</h2><p>Most catches on the fishing site.</p></div>
+    <div class="scroll" id="leaderboardBody"><p class="loading">Opening this tab loads the board.</p></div>
+  </section>
+
+  <!-- LOOT -->
+  <section class="panel" id="panel-loot" role="tabpanel" aria-labelledby="tab-loot">
+    <div class="panel-head"><h2>Loot table</h2><p>Every tier, its base chance and what it can catch.</p></div>
+    <div class="scroll" id="lootBody"></div>
+  </section>
+
+  <!-- PERKS (owned perks and Auto-Fish) -->
+  <section class="panel" id="panel-perks" role="tabpanel" aria-labelledby="tab-perks">
+    <div class="panel-head"><h2>Perks</h2><p>Turn your owned perks on or off, and start or end Auto-Fish.</p></div>
+    <div class="scroll">
+      <div id="perksList"><p class="loading">Opening this tab loads your perks.</p></div>
+      <div id="customFishPerks" class="perk-group" hidden aria-live="polite"></div>
+      <h3 class="section-h">Where you fish</h3>
+      <div id="streamerCard"></div>
+      <h3 class="section-h">Fishing area</h3>
+      <div id="areaCard"></div>
+      <h3 class="section-h">Auto-Fish</h3>
+      <div id="autoCard"></div>
+      <p class="composer-note" id="perksNote"></p>
+    </div>
+  </section>
+
+  <!-- MORE -->
+  <section class="panel" id="panel-more" role="tabpanel" aria-labelledby="tab-more">
+    <div class="panel-head"><h2>More from the site</h2><p>These need a fisher login, so they open on the full site.</p></div>
+    <div class="scroll">
+      <div class="feature-grid">
+        <div class="card"><div class="icon"><svg class="ic"><use href="#i-book"></use></svg></div><h3>Fishdex</h3><p>Your personal catch collection.</p><a class="btn" href="/?view=fishdex" target="_blank" rel="noopener" style="margin-top:12px;align-self:flex-start">Open Fishdex</a></div>
+        <div class="card"><div class="icon"><svg class="ic"><use href="#i-out"></use></svg></div><h3>Trades and gifts</h3><p>Send and accept items with other anglers.</p></div>
+        <div class="card"><div class="icon"><svg class="ic"><use href="#i-rank"></use></svg></div><h3>Progression</h3><p>Rods, bait and area unlocks.</p></div>
+        <div class="card"><div class="icon"><svg class="ic"><use href="#i-bolt"></use></svg></div><h3>Auto-Fish</h3><p>License, prestige and automatic catches.</p></div>
+        <div class="card"><div class="icon"><svg class="ic"><use href="#i-coin"></use></svg></div><h3>Pond</h3><p>Your personal pond and converter.</p></div>
+      </div>
+      <div class="cta"><a class="btn" href="/" target="_blank" rel="noopener">Open the full site</a></div>
+    </div>
+  </section>
+</main>
+
+</div>
+
+<div id="installPanel" hidden>
+  <div class="install-card">
+    <div class="brand-mark" aria-hidden="true"><svg class="ic"><use href="#i-fish"></use></svg></div>
+    <h2>Install Fishy Fishing</h2>
+    <p>Installs the game as its own window with its own icon. It runs without the website open.</p>
+    <button id="installStart" class="btn solid" type="button" disabled>Install app</button>
+    <button id="alreadyInstalledBtn" class="btn" type="button" hidden>I already installed it</button>
+    <p class="composer-note" id="installNote">Checking whether this browser can install the app…</p>
+  </div>
+</div>
+
+<div id="installedPanel" hidden>
+  <div class="install-card">
+    <div class="brand-mark" aria-hidden="true"><svg class="ic"><use href="#i-fish"></use></svg></div>
+    <h2>Installed</h2>
+    <p>Fishy Fishing is installed. Find it in your apps menu or system search as "Fishy Fishing". You can close this window.</p>
+    <button id="closeInstalledBtn" class="btn" type="button">Close this window</button>
+    <button id="continueInBrowserBtn" class="btn" type="button">Keep using it here</button>
+  </div>
+</div>
+
+<script>
+// ---------- Constants ----------
+const SHOP_ITEMS = [
+  { id:'luck125',      name:'1.25x Luck (Permanent)',  note:'Permanent luck boost',         icon:'clover' },
+  { id:'cooldown',     name:'15% Cooldown Reduction',  note:'Shorter !fish cooldown',       icon:'clock' },
+  { id:'treasuryLuck', name:'1.5x Treasury Luck',      note:'Better Treasury odds',         icon:'coin' },
+  { id:'rarityBoost',  name:'2x Rarity Luck (15 min)', note:'Rarer catches for 15 minutes', icon:'target' },
+  { id:'treasuryOnly', name:'Treasury Only Mode',      note:'Only Treasury catches',        icon:'coin' }
+];
+
+const app = document.getElementById('app');
+const $ = (id) => app.querySelector('#' + id);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const icon = (name) => `<svg class="ic" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+
+// ---------- Tabs ----------
+// Tabs follow the ARIA tab pattern: arrow keys, Home and End move between
+// them, and only the active tab sits in the tab order.
+function activateTab(name, { focus = false } = {}) {
+  app.querySelectorAll('.tab').forEach(b => {
+    const on = b.dataset.tab === name;
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.tabIndex = on ? 0 : -1;
+    if (on) {
+      if (focus) b.focus();
+      b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  });
+  app.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+  if (name === 'leaderboard') loadLeaderboard();
+  if (name === 'loot') loadLoot();
+  if (name === 'perks') loadPerks();
+}
+app.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+});
+app.querySelector('nav[role="tablist"]').addEventListener('keydown', (e) => {
+  const tabs = [...app.querySelectorAll('.tab')];
+  const i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  let next = null;
+  if (e.key === 'ArrowRight') next = (i + 1) % tabs.length;
+  else if (e.key === 'ArrowLeft') next = (i - 1 + tabs.length) % tabs.length;
+  else if (e.key === 'Home') next = 0;
+  else if (e.key === 'End') next = tabs.length - 1;
+  if (next === null) return;
+  e.preventDefault();
+  activateTab(tabs[next].dataset.tab, { focus: true });
+});
+
+// Retry and refresh buttons inside the panels.
+app.addEventListener('click', (e) => {
+  const control = e.target.closest('[data-retry], [data-refresh]');
+  if (!control) return;
+  const what = control.dataset.retry || control.dataset.refresh;
+  if (what === 'leaderboard') loadLeaderboard(true);
+  if (what === 'loot') loadLoot();
+  if (what === 'perks') loadPerks();
+});
+
+// Live character count, shown once the message is close to the 500 limit.
+$('sendInput').addEventListener('input', () => {
+  const box = $('charCount');
+  const n = $('sendInput').value.length;
+  box.hidden = n < 400;
+  box.textContent = `${n}/500`;
+  box.classList.toggle('warn', n >= 450 && n < 500);
+  box.classList.toggle('full', n >= 500);
+});
+
+// ---------- Perks and Auto-Fish ----------
+const PERK_ROWS = [
+  { post:'luck125',      label:'1.25x Luck',             hint:'Permanent luck boost',       get:d=>d.shop?.luck125 },
+  { post:'cooldown',     label:'15% Cooldown Reduction', hint:'Shorter !fish cooldown',     get:d=>d.shop?.cooldown },
+  { post:'treasuryLuck', label:'1.5x Treasury Luck',     hint:'Better Treasury odds',       get:d=>d.shop?.treasuryLuck },
+  { post:'rarityBoost',  label:'2x Rarity Luck',         hint:'Rarer catches while active', get:d=>d.shop?.rarityBoost },
+  { post:'treasuryOnly', label:'Treasury Only Mode',     hint:'Only Treasury catches',      get:d=>d.shop?.treasuryOnly },
+  { post:'fishermansFortune', label:"Fisherman's Fortune", hint:'Luck and rarer catches. Counts manual, Auto-Fish and pond catches', get:d=>d.shop?.fishermansFortune },
+  { post:'perm',         label:'Permanent luck perk',    hint:'Your permanent luck',        get:d=>d.permLuck },
+  { post:'temp',         label:'Temporary luck perk',    hint:'Your temporary luck',        get:d=>d.tempLuck },
+  { post:'vip',          label:'VIP perk',               hint:'VIP luck',                   get:d=>d.vip },
+  { post:'shield',       label:'Shield',                 hint:'Timeout protection',         get:d=>d.shield }
+];
+let perksData = null;
+let streamerData = null;
+let fishCooldownEndsAt = 0;
+let areasData = null;
+let autoFishData = null;
+let perkBusy = false;
+
+async function loadPerks() {
+  if (sessionReady) await sessionReady;
+  if (!session.loggedIn) {
+    $('perksList').innerHTML = '<p class="loading">Log in with Twitch to manage your perks.</p><a class="btn solid" href="/api/auth/login">Log in with Twitch</a>';
+    $('autoCard').innerHTML = '';
+    return;
+  }
+  try {
+    const [pRes, aRes, afRes] = await Promise.all([
+      fetch('/api/perks', { cache:'no-store' }),
+      fetch('/api/areas', { cache:'no-store' }),
+      fetch('/api/autofish', { cache:'no-store' })
+    ]);
+    const data = await pRes.json();
+    if (!pRes.ok || data.error) throw new Error(data.error || 'HTTP ' + pRes.status);
+    perksData = data;
+    areasData = aRes.ok ? await aRes.json() : null;
+    autoFishData = afRes.ok ? await afRes.json() : null;
+    renderPerks();
+    renderCustomFishPerks(data.customFishPerks);
+    renderAreas();
+    renderAutoFish();
+  } catch (e) {
+    $('perksList').innerHTML = `<div class="error">Could not load your perks. ${esc(e.message)}</div><button class="btn" type="button" data-retry="perks">Try again</button>`;
+  }
+}
+
+
+function renderCustomFishPerks(entries) {
+  const panel = $('customFishPerks');
+  if (!panel) return;
+  const active = Array.isArray(entries) ? entries.filter((entry) => Number(entry?.remainingSeconds) > 0) : [];
+  panel.hidden = active.length === 0;
+  if (!active.length) { panel.replaceChildren(); return; }
+  const title = document.createElement('div');
+  title.className = 'perk-group-title';
+  title.textContent = 'Active fish abilities';
+  panel.replaceChildren(title);
+  const effectLabels = {
+    luck: (entry) => `${Number(entry.value).toFixed(2)}× fishing luck`,
+    weight: (entry) => `${Number(entry.value).toFixed(2)}× catch weight`,
+    treasuryLuck: (entry) => `${Number(entry.value).toFixed(2)}× Treasury luck`,
+    cooldownReduction: (entry) => `${Math.round(Number(entry.cooldownReductionPct || entry.value))}% cooldown reduction`
+  };
+  for (const entry of active) {
+    const row = document.createElement('div');
+    row.className = 'custom-fish-perk';
+    const name = document.createElement('b');
+    name.textContent = String(entry.perkName || 'Custom fish perk');
+    const description = document.createElement('p');
+    description.textContent = String(entry.description || entry.fishName || 'Temporary fish ability');
+    const details = document.createElement('small');
+    const effect = effectLabels[entry.type]?.(entry) || 'Temporary effect';
+    const seconds = Math.max(0, Number(entry.remainingSeconds) || 0);
+    details.textContent = `${String(entry.fishName || 'Fish')} · ${effect} · ${Math.floor(seconds / 60)}m ${seconds % 60}s left`;
+    row.append(name, description, details);
+    panel.append(row);
+  }
+}
+
+// Categories shown as separated groups in the Perks list.
+const PERK_GROUPS = [
+  { title:'Shop perks',   posts:['luck125','cooldown','treasuryLuck','rarityBoost','treasuryOnly','fishermansFortune'] },
+  { title:'Luck perks',   posts:['perm','temp','vip'] },
+  { title:'Protection',   posts:['shield'] }
+];
+
+function renderPerks() {
+  const owned = PERK_ROWS.filter(r => r.get(perksData)?.owned === true);
+  if (!owned.length) {
+    $('perksList').innerHTML = '<p class="loading">You do not own any perks yet.</p>';
+    return;
+  }
+  const rowHtml = (r) => {
+    const on = r.get(perksData).toggleOn !== false;
+    return `<div class="perk-row">
+      <div><b>${esc(r.label)}</b><small>${esc(r.hint)}</small></div>
+      <button class="switch" type="button" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${esc(r.label)}" data-perk="${esc(r.post)}"><span></span></button>
+    </div>`;
+  };
+  const groups = PERK_GROUPS.map(g => {
+    const rows = owned.filter(r => g.posts.includes(r.post));
+    if (!rows.length) return '';
+    return `<div class="perk-group"><div class="perk-group-title">${esc(g.title)}</div>${rows.map(rowHtml).join('')}</div>`;
+  }).join('');
+  $('perksList').innerHTML = groups + fortuneCardHtml();
+}
+
+// Fisherman's Fortune progress: level, a bar toward the next level, and the catch totals.
+function fortuneCardHtml() {
+  const f = perksData?.fortune;
+  if (!f || !f.owned) return '';
+  const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+  const c = f.catches || {};
+  const next = f.nextAt ? `Next level at ${fmt(f.nextAt)} catches` : 'Maximum level reached';
+  return `<div class="perk-group fortune-card">
+    <div class="perk-group-title">Fisherman's Fortune · Level ${f.level} of ${f.maxLevel}</div>
+    <div class="fortune-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Number(f.percent) || 0}"><span style="width:${Number(f.percent) || 0}%"></span></div>
+    <div class="fortune-meta">${fmt(c.total)} catches · ${next}</div>
+    <div class="fortune-meta">Manual ${fmt(c.manual)} · Auto-Fish ${fmt(c.auto)} · Pond ${fmt(c.pond)}</div>
+    <div class="fortune-meta">Luck +${(Number(f.level) * 0.05).toFixed(2)} · Uncaught fish ×${(1 + Number(f.level) * 0.05).toFixed(2)}${f.toggleOn ? '' : ' · paused'}</div>
+  </div>`;
+}
+
+function renderAreas() {
+  const areas = Array.isArray(areasData?.areas) ? areasData.areas : [];
+  const unlocked = areas.filter(a => a.unlocked);
+  if (!unlocked.length) {
+    $('areaCard').innerHTML = '<p class="loading">Unlock a fishing area on the site to choose it here.</p>';
+    return;
+  }
+  const selected = areasData.selected || '';
+  $('areaCard').innerHTML = `<div class="perk-row">
+    <div><b>Where you fish</b><small>Applies to your !fish casts</small></div>
+    <select id="areaSelect" class="inline-select" aria-label="Fishing area">
+      <option value="">Normal waters</option>
+      ${unlocked.map(a => `<option value="${esc(a.id)}" ${a.id === selected ? 'selected' : ''} ${a.enabled ? '' : 'disabled'}>${esc(a.name)} · L${Number(a.level)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+function renderAutoFish() {
+  const running = !!perksData?.autoFish?.active;
+  const af = autoFishData || {};
+  const areaLevels = af.areas || {};
+  const targetable = Object.keys(areaLevels).filter(id => (areaLevels[id]?.level || 0) >= 1);
+  const target = af.targetArea || '';
+  const trophyOn = af.trophyMode === true;
+  const trophyUnlocked = af.trophyFishingUnlocked === true;
+  $('autoCard').innerHTML = `<div class="perk-row">
+    <div><b>Auto-Fish session</b><small>${running ? 'Running now' : 'Not running'}</small></div>
+    <div class="row-btns">
+      <button class="btn solid" type="button" data-af="start" ${running ? 'disabled' : ''}>Start</button>
+      <button class="btn" type="button" data-af="stop" ${running ? '' : 'disabled'}>End</button>
+    </div>
+  </div>
+  ${af.licensed === false ? '<p class="composer-note">Buy the Auto-Fishing License on the site to use Auto-Fish.</p>' : `
+  <div class="perk-row">
+    <div><b>Auto-Fish area</b><small>Where Auto-Fish casts</small></div>
+    <select id="afTarget" class="inline-select" aria-label="Auto-Fish area">
+      <option value="">Normal waters</option>
+      ${targetable.map(id => `<option value="${esc(id)}" ${id === target ? 'selected' : ''}>${esc(areaLevels[id].name || id)} · L${Number(areaLevels[id].level)}</option>`).join('')}
+    </select>
+  </div>
+  <div class="perk-row">
+    <div><b>Trophy Fishing</b><small>${trophyUnlocked ? 'Auto-Fish trophy catches' : 'Unlocks at Auto-Fish level 5'}</small></div>
+    <button class="switch" type="button" role="switch" aria-checked="${trophyOn ? 'true' : 'false'}" aria-label="Trophy Fishing" data-trophy="1" ${trophyUnlocked ? '' : 'disabled'}><span></span></button>
+  </div>`}`;
+}
+
+async function postJson(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) throw new Error(data.error || 'That did not change.');
+  return data;
+}
+
+$('areaCard').addEventListener('change', async (e) => {
+  if (e.target.id !== 'areaSelect' || perkBusy) return;
+  perkBusy = true;
+  setPerksNote('Saving area…');
+  try {
+    const areaId = e.target.value;
+    const data = await postJson('/api/areas', areaId ? { action:'select', areaId } : { action:'select' });
+    setPerksNote(data.message || 'Fishing area saved.');
+    await loadPerks();
+  } catch (err) {
+    setPerksNote(err.message, 'err');
+  } finally {
+    perkBusy = false;
+  }
+});
+
+$('autoCard').addEventListener('change', async (e) => {
+  if (e.target.id !== 'afTarget' || perkBusy) return;
+  perkBusy = true;
+  setPerksNote('Saving Auto-Fish area…');
+  try {
+    await postJson('/api/autofish', { action:'target', targetArea: e.target.value || '' });
+    setPerksNote('Auto-Fish area saved.');
+    await loadPerks();
+  } catch (err) {
+    setPerksNote(err.message, 'err');
+  } finally {
+    perkBusy = false;
+  }
+});
+
+function setPerksNote(text, kind) {
+  const note = $('perksNote');
+  note.className = 'composer-note' + (kind ? ' ' + kind : '');
+  note.textContent = text;
+}
+
+$('perksList').addEventListener('click', async (e) => {
+  const sw = e.target.closest('button.switch');
+  if (!sw || perkBusy) return;
+  const next = sw.getAttribute('aria-checked') !== 'true';
+  perkBusy = true;
+  setPerksNote('Saving…');
+  try {
+    const res = await fetch('/api/perks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ perk: sw.dataset.perk, enabled: next })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Could not update that perk.');
+    setPerksNote('');
+    await loadPerks();
+  } catch (err) {
+    setPerksNote(err.message, 'err');
+  } finally {
+    perkBusy = false;
+  }
+});
+
+$('autoCard').addEventListener('click', async (e) => {
+  const sw = e.target.closest('button[data-trophy]');
+  if (sw && !sw.disabled && !perkBusy) {
+    const next = sw.getAttribute('aria-checked') !== 'true';
+    perkBusy = true;
+    setPerksNote('Saving Trophy Fishing…');
+    try {
+      await postJson('/api/autofish', { action:'trophyMode', enabled: next });
+      setPerksNote('Trophy Fishing ' + (next ? 'on.' : 'off.'));
+      await loadPerks();
+    } catch (err) {
+      setPerksNote(err.message, 'err');
+    } finally {
+      perkBusy = false;
+    }
+    return;
+  }
+  const btn = e.target.closest('button[data-af]');
+  if (!btn || btn.disabled || perkBusy) return;
+  const action = btn.dataset.af;
+  perkBusy = true;
+  setPerksNote(action === 'start' ? 'Starting Auto-Fish…' : 'Ending session…');
+  try {
+    const res = await fetch('/api/autofish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) throw new Error(data.error || 'Auto-Fish did not change.');
+    const casts = data.settlement?.casts;
+    setPerksNote(action === 'start'
+      ? 'Auto-Fish session started.'
+      : 'Session ended' + (typeof casts === 'number' ? ' · ' + casts + ' casts settled.' : '.'));
+    await loadPerks();
+  } catch (err) {
+    setPerksNote(err.message, 'err');
+  } finally {
+    perkBusy = false;
+  }
+});
+
+// ---------- Where you fish (streamer) and the !fish cooldown ----------
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60);
+  const r = String(sec % 60).padStart(2, '0');
+  return m + ':' + r;
+}
+
+async function loadStreamer() {
+  if (!session.loggedIn) { streamerData = null; renderStreamer(); tickMacro(); return; }
+  try {
+    const res = await fetch('/api/streamer', { cache:'no-store' });
+    const data = await res.json();
+    if (res.ok && data.success !== false) streamerData = data;
+  } catch (e) { /* keep the last known values */ }
+  renderStreamer();
+  tickMacro();
+}
+
+function renderStreamer() {
+  const card = $('streamerCard');
+  if (!session.loggedIn) { card.innerHTML = '<p class="loading">Log in with Twitch to choose where you fish.</p>'; return; }
+  if (!streamerData) { card.innerHTML = ''; return; }
+  const rows = streamerData.broadcasters || [];
+  if (!rows.length) { card.innerHTML = '<p class="loading">No broadcasters are open for fishing yet.</p>'; return; }
+  const selected = streamerData.selected || '';
+  const wait = Number(streamerData.changeCooldownRemainingSeconds) || 0;
+  card.innerHTML = `<div class="perk-row">
+    <div><b>Fishing streamer</b><small>${wait > 0 ? 'You can change again in ' + fmtTime(wait) : 'Changes are rate-limited'}</small></div>
+    <select id="streamerSelect" class="inline-select" aria-label="Fishing streamer" ${wait > 0 ? 'disabled' : ''}>
+      <option value="">Choose a streamer</option>
+      ${rows.map(r => `<option value="${esc(r.channel)}" ${r.channel === selected ? 'selected' : ''}>${esc(r.channel)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+$('streamerCard').addEventListener('change', async (e) => {
+  if (e.target.id !== 'streamerSelect' || perkBusy) return;
+  perkBusy = true;
+  setPerksNote('Saving streamer…');
+  try {
+    const data = await postJson('/api/streamer', { streamer: e.target.value });
+    setPerksNote(data.selected ? 'Now fishing in ' + data.selected + '.' : 'Streamer saved.');
+    await loadStreamer();
+  } catch (err) {
+    setPerksNote(err.message, 'err');
+    await loadStreamer();
+  } finally {
+    perkBusy = false;
+  }
+});
+
+// The !fish button shows the cooldown of the connected channel instead of its label.
+function tickMacro() {
+  const btn = $('macroFishBtn');
+  if (!btn) return;
+  const row = (streamerData?.broadcasters || []).find(r => r.channel === connectedChannel);
+  if (row && Number(row.cooldownRemainingSeconds) > 0 && !fishCooldownEndsAt) {
+    fishCooldownEndsAt = Date.now() + Number(row.cooldownRemainingSeconds) * 1000;
+  }
+  const left = Math.ceil((fishCooldownEndsAt - Date.now()) / 1000);
+  const cooling = left > 0;
+  if (!cooling) fishCooldownEndsAt = 0;
+  const canSend = session.loggedIn && session.linked && !!connectedChannel;
+  if (cooling) {
+    btn.textContent = fmtTime(left);
+    btn.title = 'Fish cooldown';
+  } else {
+    btn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-fish"></use></svg>!fish';
+    btn.title = 'Send !fish to the channel';
+  }
+  btn.disabled = !canSend || cooling;
+}
+setInterval(tickMacro, 1000);
+setInterval(() => { if (session.loggedIn) loadStreamer(); }, 20000);
+
+// ---------- Broadcaster list (only MasterAdmin-enabled channels) ----------
+let allowedChannels = [];
+async function loadChannels() {
+  const select = $('channel');
+  try {
+    const res = await fetch('/api/chat-send', { cache:'no-store' });
+    const data = await res.json();
+    allowedChannels = Array.isArray(data.channels) ? data.channels : [];
+  } catch (e) {
+    allowedChannels = [];
+  }
+  if (!allowedChannels.length) {
+    select.innerHTML = '<option value="">No broadcasters open for chat</option>';
+    select.disabled = true;
+    setChatState('idle');
+    return;
+  }
+  select.innerHTML = '<option value="">Choose a broadcaster</option>' +
+    allowedChannels.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  let saved = '';
+  try { saved = localStorage.getItem('fishy-channel') || ''; } catch (e) {}
+  if (allowedChannels.includes(saved)) {
+    select.value = saved;
+    connectChat({ manual: true });
+  }
+}
+
+// ---------- Session and viewer chat ----------
+// The window only learns whether the viewer is logged in and whether chat is
+// enabled. No tokens are ever sent to the page.
+let session = { loggedIn:false, linked:false, login:'', displayName:'' };
+let sessionReady = null; // set at the bottom of this script; loaders wait for it
+let connectedChannel = '';
+
+function renderWho() {
+  const txt = $('whoText');
+  const act = $('whoActions');
+  if (session.loggedIn) {
+    txt.textContent = 'Logged in as ' + (session.displayName || session.login);
+    act.innerHTML = session.linked
+      ? '<span class="chip-live">Chat enabled</span>'
+      : '<button class="btn" type="button" id="enableChatBtn">Enable chat</button>';
+  } else {
+    txt.textContent = 'Not logged in';
+    act.innerHTML = '<a class="btn solid" href="/api/auth/login">Log in with Twitch</a>';
+  }
+  const enable = $('enableChatBtn');
+  if (enable) enable.addEventListener('click', () => { window.location.href = '/api/auth/chat-connect'; });
+  renderComposer();
+}
+
+function renderComposer() {
+  const input = $('sendInput');
+  const btn = $('sendBtn');
+  const note = $('composerNote');
+  const canSend = session.loggedIn && session.linked && !!connectedChannel;
+  input.disabled = !canSend;
+  btn.disabled = !canSend;
+  tickMacro();
+  input.placeholder = canSend
+    ? 'Send a message to #' + connectedChannel + '…'
+    : (!session.loggedIn ? 'Log in to send'
+      : !session.linked ? 'Enable chat to send'
+      : 'Connect a channel first');
+  if (!session.loggedIn) {
+    note.className = 'composer-note';
+    note.innerHTML = 'Read chat anonymously. <a href="/api/auth/login">Log in</a> to send.';
+  } else if (!session.linked) {
+    note.className = 'composer-note';
+    note.innerHTML = 'Reading is live. <a href="/api/auth/chat-connect">Enable chat</a> to send.';
+  } else {
+    note.className = 'composer-note';
+    note.textContent = '';
+  }
+}
+
+async function loadSession() {
+  try {
+    const [meRes, chatRes] = await Promise.all([
+      fetch('/api/auth/me', { cache:'no-store' }),
+      fetch('/api/chat-send', { cache:'no-store' })
+    ]);
+    const me = await meRes.json().catch(() => ({}));
+    const chat = await chatRes.json().catch(() => ({}));
+    session = {
+      loggedIn: !!me.loggedIn,
+      login: me.login || '',
+      displayName: me.displayName || '',
+      linked: !!chat.linked
+    };
+  } catch (e) {
+    session = { loggedIn:false, linked:false, login:'', displayName:'' };
+  }
+  renderWho();
+  const params = new URLSearchParams(location.search);
+  if (params.get('chat') === 'linked') {
+    $('composerNote').className = 'composer-note ok';
+    $('composerNote').textContent = 'Chat enabled. You can send messages now.';
+    history.replaceState(null, '', '/game');
+  }
+}
+
+async function sendMessage() {
+  const input = $('sendInput');
+  const note = $('composerNote');
+  const message = input.value.trim();
+  if (!message || !connectedChannel) return;
+  $('sendBtn').disabled = true;
+  note.className = 'composer-note';
+  note.textContent = 'Sending…';
+  try {
+    const res = await fetch('/api/chat-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: connectedChannel, message })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.sent) {
+      input.value = '';
+      note.className = 'composer-note ok';
+      note.textContent = 'Sent to #' + connectedChannel + '.';
+    } else {
+      note.className = 'composer-note err';
+      note.textContent = data.error || 'Message was not sent.';
+      if (data.needsLink) { session.linked = false; renderWho(); }
+    }
+  } catch (e) {
+    note.className = 'composer-note err';
+    note.textContent = 'Could not reach the server. Try again.';
+  } finally {
+    $('sendBtn').disabled = !(session.loggedIn && session.linked && connectedChannel);
+    tickMacro();
+    input.focus();
+  }
+}
+async function sendText(message) {
+  if (!message || !connectedChannel) return;
+  const note = $('composerNote');
+  note.className = 'composer-note';
+  note.textContent = 'Sending…';
+  try {
+    const res = await fetch('/api/chat-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: connectedChannel, message })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.sent) { note.className = 'composer-note ok'; note.textContent = 'Sent ' + message + ' to #' + connectedChannel + '.'; }
+    else { note.className = 'composer-note err'; note.textContent = data.error || 'Message was not sent.'; if (data.needsLink) { session.linked = false; renderWho(); } }
+  } catch (e) { note.className = 'composer-note err'; note.textContent = 'Could not reach the server. Try again.'; }
+}
+$('macroFishBtn').addEventListener('click', async () => {
+  await sendText('!fish');
+  // The bot starts the cooldown when it handles !fish; read it back shortly after.
+  setTimeout(loadStreamer, 2000);
+});
+$('sendBtn').addEventListener('click', sendMessage);
+$('sendInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+// ---------- Chat reader (anonymous, read-only Twitch IRC over WebSocket) ----------
+const chatEl = $('chat');
+const statusEl = $('status');
+const chatScroll = $('chatScroll');
+const chatEmpty = $('chatEmpty');
+const chatEmptyTitle = $('chatEmptyTitle');
+const chatEmptyCopy = $('chatEmptyCopy');
+const chatSubtitle = $('chatSubtitle');
+const chatLiveMark = $('chatLiveMark');
+const newMessagesBtn = $('newMessagesBtn');
+let socket = null;
+let reconnectTimer = null;
+let reconnectAttempt = 0;
+let manuallyDisconnected = false;
+let pendingNewMessages = 0;
+let lastScrollAt = 0;
+
+const RARITY_META = {
+  SECRET: ['secret', 'Secret'], UNIQUE: ['secret', 'Secret'], GODLY: ['godly', 'Godly'],
+  LEGENDARY: ['legendary', 'Legendary'], EPIC: ['epic', 'Epic'], RARE: ['rare', 'Rare'],
+  UNCOMMON: ['uncommon', 'Uncommon'], COMMON: ['common', 'Common'], TREASURY: ['treasury', 'Treasury']
+};
+
+function setChatState(state, detail = '') {
+  const labels = {
+    idle: ['Choose a broadcaster', 'Choose a broadcaster', 'Pick a broadcaster above and chat will open automatically.'],
+    connecting: ['Connecting…', 'CONNECTING', 'Opening live chat…'],
+    live: ['Live · #' + (connectedChannel || ''), 'LIVE', 'Watching #' + (connectedChannel || 'channel') + ' anonymously.'],
+    disconnected: ['Disconnected', 'OFFLINE', 'The chat connection was lost. We’ll retry automatically.'],
+    error: ['Connection error', 'ERROR', detail || 'Could not connect to this channel.']
+  };
+  const [status, mark, subtitle] = labels[state] || labels.idle;
+  statusEl.textContent = status;
+  statusEl.className = 'status' + (state === 'live' ? ' on' : '');
+  chatLiveMark.textContent = mark;
+  chatLiveMark.className = 'chat-live-mark ' + (state === 'live' ? 'live' : state === 'connecting' ? 'connecting' : state === 'error' ? 'error' : '');
+  chatSubtitle.textContent = subtitle;
+  const reconnectBtn = $('connectBtn');
+  if (reconnectBtn) {
+    reconnectBtn.hidden = !(state === 'disconnected' || state === 'error');
+    reconnectBtn.textContent = state === 'error' ? 'Retry' : 'Reconnect';
+  }
+  if (state === 'idle') {
+    chatEmptyTitle.textContent = 'Waiting for a channel';
+    chatEmptyCopy.textContent = 'Pick a broadcaster above and chat will open automatically.';
+  } else if (state === 'connecting') {
+    chatEmptyTitle.textContent = 'Connecting to #' + (connectedChannel || 'channel');
+    chatEmptyCopy.textContent = 'Opening the live chat connection…';
+  } else if (state === 'live') {
+    chatEmptyTitle.textContent = 'Connected to #' + (connectedChannel || 'channel');
+    chatEmptyCopy.textContent = 'Chat is quiet right now. New messages appear here as viewers chat.';
+  } else if (state === 'disconnected') {
+    chatEmptyTitle.textContent = 'Chat connection lost';
+    chatEmptyCopy.textContent = 'We’ll try again automatically. You can also reconnect now.';
+  } else if (state === 'error') {
+    chatEmptyTitle.textContent = 'Couldn’t open chat';
+    chatEmptyCopy.textContent = detail || 'Check the broadcaster and try again.';
+  }
+}
+
+function updateEmptyState() {
+  chatEmpty.hidden = chatEl.children.length > 0;
+}
+
+function nearBottom() {
+  return chatScroll.scrollHeight - chatScroll.scrollTop - chatScroll.clientHeight < 42;
+}
+
+function scrollChatToBottom() {
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+  pendingNewMessages = 0;
+  newMessagesBtn.hidden = true;
+}
+
+newMessagesBtn.addEventListener('click', scrollChatToBottom);
+chatScroll.addEventListener('scroll', () => {
+  lastScrollAt = Date.now();
+  if (nearBottom()) {
+    pendingNewMessages = 0;
+    newMessagesBtn.hidden = true;
+  }
+});
+
+function addMessage(html, cls) {
+  const wasNearBottom = nearBottom();
+  const div = document.createElement('div');
+  div.className = 'msg ' + (cls || '');
+  div.innerHTML = html;
+  chatEl.appendChild(div);
+  while (chatEl.children.length > 200) chatEl.removeChild(chatEl.firstChild);
+  updateEmptyState();
+  if (wasNearBottom || chatEl.children.length <= 1) {
+    scrollChatToBottom();
+  } else {
+    pendingNewMessages += 1;
+    newMessagesBtn.textContent = '↓ ' + pendingNewMessages + ' new message' + (pendingNewMessages === 1 ? '' : 's');
+    newMessagesBtn.hidden = false;
+  }
+}
+
+function parseTags(raw) {
+  const tags = {};
+  raw.split(';').forEach(pair => { const i = pair.indexOf('='); if (i > -1) tags[pair.slice(0,i)] = pair.slice(i+1); });
+  return tags;
+}
+
+// The server uses mathematical-bold Unicode for fish names and tier badges.
+// Normalize those letters so the UI can recognize the canonical tier names
+// without changing the message that the viewer actually sees.
+function normalizeFancyLatin(text) {
+  let out = '';
+  for (const ch of String(text || '')) {
+    const cp = ch.codePointAt(0);
+    if (cp >= 0x1D400 && cp <= 0x1D419) out += String.fromCharCode(65 + cp - 0x1D400);
+    else if (cp >= 0x1D41A && cp <= 0x1D433) out += String.fromCharCode(97 + cp - 0x1D41A);
+    else if (cp >= 0x1D434 && cp <= 0x1D44D) out += String.fromCharCode(65 + cp - 0x1D434);
+    else if (cp >= 0x1D468 && cp <= 0x1D481) out += String.fromCharCode(65 + cp - 0x1D468);
+    else if (cp >= 0x1D482 && cp <= 0x1D49B) out += String.fromCharCode(97 + cp - 0x1D482);
+    else out += ch;
+  }
+  return out;
+}
+
+function detectRarity(text) {
+  const normalized = normalizeFancyLatin(text).toUpperCase();
+  // Fishy messages place the tier inside square brackets, so restrict the
+  // match to bracketed content to avoid colouring ordinary conversation.
+  const bracket = normalized.match(/\[([^\]]*)\]/g) || [];
+  for (const chunk of bracket) {
+    for (const name of Object.keys(RARITY_META)) {
+      if (new RegExp('(?:^|[^A-Z])' + name + '(?:[^A-Z]|$)').test(chunk)) return RARITY_META[name];
+    }
+  }
+  return null;
+}
+
+function rarityMarkup(rarity) {
+  if (!rarity) return '';
+  return '<span class="rarity-chip" aria-label="' + rarity[1] + ' rarity">' + rarity[1] + '</span>';
+}
+
+function connectChat({ manual = false } = {}) {
+  const channel = $('channel').value;
+  manuallyDisconnected = false;
+  if (!allowedChannels.includes(channel)) {
+    connectedChannel = '';
+    setChatState('idle');
+    renderComposer();
+    return;
+  }
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  if (socket) {
+    try { socket.onclose = null; socket.close(); } catch (e) {}
+  }
+  connectedChannel = channel;
+  fishCooldownEndsAt = 0;
+  reconnectAttempt = manual ? 0 : reconnectAttempt;
+  chatEl.innerHTML = '';
+  pendingNewMessages = 0;
+  newMessagesBtn.hidden = true;
+  updateEmptyState();
+  renderComposer();
+  setChatState('connecting');
+  socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  socket.onopen = () => {
+    socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+    socket.send('NICK justinfan' + Math.floor(10000 + Math.random() * 89999));
+    socket.send('JOIN #' + channel);
+  };
+  socket.onmessage = (event) => {
+    event.data.split('\r\n').forEach(line => {
+      if (!line) return;
+      if (line.startsWith('PING')) return socket.send('PONG' + line.slice(4));
+      if (line.includes(' 366 ') || line.includes(' JOIN ')) {
+        reconnectAttempt = 0;
+        setChatState('live');
+        return;
+      }
+      const m = line.match(/^@([^ ]+) :([^!]+)![^ ]+ PRIVMSG #[^ ]+ :(.*)$/);
+      if (!m) return;
+      const tags = parseTags(m[1]);
+      const user = tags['display-name'] || m[2];
+      const color = /^#[0-9a-f]{6}$/i.test(tags.color || '') ? tags.color : '#EDE8DC';
+      const text = m[3];
+      const isFish = /^!fish\b/i.test(text);
+      const rarity = detectRarity(text);
+      const rarityClass = rarity ? ' rarity rarity-' + rarity[0] : '';
+      const sentAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const initial = esc(String(user).charAt(0).toUpperCase() || '?');
+      addMessage(
+        '<span class="msg-avatar" style="background:' + esc(color) + '" aria-hidden="true">' + initial + '</span>' +
+        '<div class="msg-body">' +
+          '<div class="msg-meta"><span class="name" style="color:' + esc(color) + '">' + esc(user) + '</span>' +
+          (isFish ? '<span class="tag">!FISH</span>' : '') +
+          '<time class="msg-time">' + sentAt + '</time></div>' +
+          '<div class="msg-text">' + rarityMarkup(rarity) + esc(text) + '</div>' +
+        '</div>',
+        (isFish ? 'fish' : '') + rarityClass
+      );
+    });
+  };
+  socket.onclose = () => {
+    if (manuallyDisconnected) return;
+    if ($('channel').value !== channel) return;
+    setChatState('disconnected');
+    const delay = Math.min(10000, 1000 * Math.max(1, ++reconnectAttempt));
+    reconnectTimer = setTimeout(() => connectChat(), delay);
+  };
+  socket.onerror = () => {
+    setChatState('error', 'The live chat socket reported an error. Retrying…');
+  };
+}
+
+$('connectBtn').addEventListener('click', () => connectChat({ manual: true }));
+$('channel').addEventListener('change', () => {
+  const channel = $('channel').value;
+  try { localStorage.setItem('fishy-channel', channel); } catch (e) {}
+  if (!channel) {
+    manuallyDisconnected = true;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if (socket) { try { socket.close(); } catch (e) {} }
+    socket = null;
+    connectedChannel = '';
+    chatEl.innerHTML = '';
+    pendingNewMessages = 0;
+    newMessagesBtn.hidden = true;
+    updateEmptyState();
+    setChatState('idle');
+    renderComposer();
+    return;
+  }
+  connectChat({ manual: true });
+});
+
+// ---------- Leaderboard (same-origin, live) ----------
+let leaderboardLoaded = false;
+let leaderboardLoadedAt = 0;
+const BOARD_TTL_MS = 60000;
+async function loadLeaderboard(force = false) {
+  if (!force && leaderboardLoaded && Date.now() - leaderboardLoadedAt < BOARD_TTL_MS) return;
+  const body = $('leaderboardBody');
+  if (!leaderboardLoaded) body.innerHTML = '<p class="loading">Loading…</p>';
+  try {
+    const res = await fetch('/api/leaderboard', { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'HTTP ' + res.status);
+    const rows = (data.catches || []).slice(0, 25);
+    leaderboardLoaded = true;
+    leaderboardLoadedAt = Date.now();
+    const stamp = new Date(leaderboardLoadedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const meta = `<div class="board-meta"><span>Updated ${stamp}</span><button class="btn" type="button" data-refresh="leaderboard">Refresh</button></div>`;
+    if (!rows.length) { body.innerHTML = meta + '<p class="loading">No anglers yet.</p>'; return; }
+    body.innerHTML = meta + '<table class="table"><thead><tr><th>Rank</th><th>Angler</th><th class="num">Catches</th></tr></thead><tbody>' +
+      rows.map((r, i) => `<tr>
+        <td><span class="rank ${i < 3 ? 'top' : ''}">${String(i+1).padStart(2,'0')}</span></td>
+        <td>${esc(r.username)}</td>
+        <td class="num">${Number(r.count).toLocaleString('en-US')}</td></tr>`).join('') +
+      '</tbody></table>';
+  } catch (err) {
+    body.innerHTML = `<div class="error">Could not load the leaderboard. ${esc(err.message)}</div><button class="btn" type="button" data-retry="leaderboard">Try again</button>`;
+  }
+}
+
+// ---------- Loot table (same-origin, live) ----------
+let lootLoaded = false;
+async function loadLoot() {
+  if (lootLoaded) return;
+  const body = $('lootBody');
+  body.innerHTML = '<p class="loading">Loading…</p>';
+  try {
+    const res = await fetch('/api/fish?action=tiers');
+    const all = await res.json();
+    if (!res.ok || !Array.isArray(all)) throw new Error('HTTP ' + res.status);
+    // SECRET is hidden in this window only; the site's own loot table is unchanged.
+    const tiers = all.filter(t => t.id !== 'unique' && String(t.name).toUpperCase() !== 'SECRET');
+    const rarityClassForTier = (tier) => {
+      const id = String(tier?.id || '').toLowerCase();
+      return ['unique','godly','legendary','epic','rare','uncommon','common','treasury'].includes(id) ? 'rarity-' + (id === 'unique' ? 'secret' : id) : '';
+    };
+    body.innerHTML = '<div class="grid">' + tiers.map(t => {
+      const rarityClass = rarityClassForTier(t);
+      return `<div class="card ${rarityClass}">
+        <span class="tier tier-rarity">${esc(t.badge || t.name)}</span>
+        <h3 class="tier-rarity-name">${esc(t.name)}</h3>
+        <p>Base chance ${esc(t.basePct)}%</p>
+        <ul>${(t.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+      </div>`;
+    }).join('') + '</div>';
+    lootLoaded = true;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Could not load the loot table. ${esc(err.message)}</div><button class="btn" type="button" data-retry="loot">Try again</button>`;
+  }
+}
+
+// ---------- Pin on top ----------
+// Chromium browsers (Chrome, Edge, Brave) can open a page in an always-on-top
+// window. That window shows this same page at its own URL, so the main site
+// does not need to be open. The pinned copy hides its own pin button.
+let pipWin = null;
+const pinBtn = document.getElementById('pinBtn');
+const inPinnedWindow = window.top !== window;
+
+async function pinThisWindow() {
+  try {
+    pipWin = await window.documentPictureInPicture.requestWindow({ width: 420, height: 800 });
+    const doc = pipWin.document;
+    doc.title = 'Fishy Fishing';
+    doc.body.style.margin = '0';
+    doc.body.style.background = '#050807';
+    doc.body.style.height = '100vh';
+    const frame = doc.createElement('iframe');
+    frame.src = '/game';
+    frame.title = 'Fishy Fishing game window';
+    frame.style.cssText = 'border:0;width:100%;height:100%;display:block;';
+    doc.body.appendChild(frame);
+    pinBtn.textContent = 'Popped out';
+    pinBtn.disabled = true;
+    pipWin.addEventListener('pagehide', () => {
+      pipWin = null;
+      pinBtn.textContent = 'Pop out';
+      pinBtn.disabled = false;
+    });
+  } catch (e) {
+    pipWin = null;
+  }
+}
+
+if (!inPinnedWindow && 'documentPictureInPicture' in window) {
+  pinBtn.hidden = false;
+  pinBtn.addEventListener('click', () => { if (!pipWin) pinThisWindow(); });
+}
+
+// ---------- Install as a browser app ----------
+const INSTALLED_KEY = 'gm-app-installed';
+const isInstallMode = new URLSearchParams(location.search).get('install') === '1';
+const alreadyStandalone = window.matchMedia('(display-mode: standalone)').matches;
+// Chromium browsers (Chrome, Edge, Brave) offer to install this page as its
+// own window with the game's icon. The button appears only when they offer it.
+let installPrompt = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  installBtn.hidden = false;
+});
+installBtn.addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => null);
+  installPrompt = null;
+  installBtn.hidden = true;
+});
+window.addEventListener('appinstalled', () => {
+  try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (e) {}
+  installBtn.hidden = true;
+  installPrompt = null;
+  if (isInstallMode) finishInstallWindow();
+  else if (!alreadyStandalone && !inPinnedWindow) showInstalledNotice();
+});
+
+// The install window: shows the install button and closes itself after installing.
+// After installing, this window stays open and shows the installed message.
+// It is closed only when the user presses the close button.
+function finishInstallWindow() {
+  showInstalledNotice();
+}
+
+function showInstalledNotice() {
+  app.hidden = true;
+  document.getElementById('installPanel').hidden = true;
+  document.getElementById('installedPanel').hidden = false;
+  document.title = 'Fishy Fishing · Installed';
+}
+function hideInstalledNotice() {
+  document.getElementById('installedPanel').hidden = true;
+  app.hidden = false;
+  document.title = 'Fishy Fishing · Game';
+}
+const installedHere = (() => { try { return localStorage.getItem(INSTALLED_KEY) === '1'; } catch (e) { return false; } })();
+const continuedHere = (() => { try { return sessionStorage.getItem('gm-continue') === '1'; } catch (e) { return false; } })();
+// In a normal browser tab, after installing, show the notice instead of the game.
+if (!isInstallMode && !alreadyStandalone && !inPinnedWindow && installedHere && !continuedHere) {
+  showInstalledNotice();
+}
+document.getElementById('closeInstalledBtn').addEventListener('click', () => {
+  try { window.close(); } catch (e) {}
+});
+document.getElementById('continueInBrowserBtn').addEventListener('click', () => {
+  try { sessionStorage.setItem('gm-continue', '1'); } catch (e) {}
+  hideInstalledNotice();
+});
+
+if (isInstallMode) {
+  app.hidden = true;
+  document.getElementById('installPanel').hidden = false;
+  document.title = 'Install Fishy Fishing';
+  const start = document.getElementById('installStart');
+  const note = document.getElementById('installNote');
+  const alreadyBtn = document.getElementById('alreadyInstalledBtn');
+  alreadyBtn.addEventListener('click', () => {
+    try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (e) {}
+    showInstalledNotice();
+  });
+  if (installedHere && !alreadyStandalone) {
+    // Installed earlier: skip the install step and show the installed message.
+    showInstalledNotice();
+  } else if (alreadyStandalone) {
+    note.textContent = 'Fishy Fishing is already installed and open.';
+    setTimeout(() => { try { window.close(); } catch (e) {} }, 1500);
+  } else {
+    // If the browser never offers installation, say how to do it by hand.
+    setTimeout(() => {
+      if (!installPrompt) {
+        note.textContent = 'This browser did not offer installation here. If Fishy Fishing is already installed, press "I already installed it". Otherwise use the install icon in the address bar, or the browser menu: Install Fishy Fishing.';
+        alreadyBtn.hidden = false;
+      }
+    }, 3000);
+    window.addEventListener('beforeinstallprompt', () => { start.disabled = false; note.textContent = 'Ready to install.'; });
+    start.addEventListener('click', async () => {
+      if (!installPrompt) return;
+      start.disabled = true;
+      note.textContent = 'Waiting for the install dialog…';
+      installPrompt.prompt();
+      const choice = await installPrompt.userChoice.catch(() => null);
+      if (!choice || choice.outcome !== 'accepted') {
+        start.disabled = false;
+        note.textContent = 'Install was cancelled. You can try again any time.';
+      }
+    });
+  }
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/game-sw.js', { scope: '/game' }).catch(() => {});
+}
+
+// ---------- Start ----------
+loadChannels();
+sessionReady = loadSession();
+sessionReady.then(loadStreamer);
+</script>
+</body>
+</html>

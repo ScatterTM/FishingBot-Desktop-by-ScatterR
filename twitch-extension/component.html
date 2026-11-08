@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="fishingbot-extension-version" content="1.0.0-beta">
+  <title>Fishingbot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+  <link rel="stylesheet" href="component.css">
+  <link rel="stylesheet" href="world-map/map.css">
+</head>
+<body>
+  <main class="widget" data-extension-version="1.0.0-beta" aria-label="Fishingbot world map extension">
+    <header class="topbar">
+      <div class="brandmark" aria-hidden="true">🐟</div>
+      <div class="brand-copy">
+        <div class="eyebrow">FISHINGBOT / COMMUNITY</div>
+        <h1>Fishing Hub</h1>
+      </div>
+      <div class="top-actions">
+        <div id="connection" class="connection waiting"><span class="dot"></span><span id="connection-text">Waiting</span></div>
+        <button id="extension-refresh" class="refresh-button" type="button" aria-label="Refresh world map and account connection">Refresh</button>
+      </div>
+    </header>
+
+    <div id="relay-status" class="relay-status warming" role="status" aria-live="polite">
+      <span class="relay-status-dot" aria-hidden="true"></span>
+      <span id="relay-status-text">Checking Fishingbot relay…</span>
+      <button id="relay-status-retry" type="button" hidden>Retry</button>
+    </div>
+    <aside id="browser-protection-warning" class="browser-protection-warning" role="alert" aria-live="assertive" hidden>
+      <span class="browser-protection-mark" aria-hidden="true">!</span>
+      <div class="browser-protection-copy">
+        <strong id="browser-protection-title">Browser protection may be blocking FishingHub</strong>
+        <p id="browser-protection-text">A privacy or ad-blocking feature may be preventing the Extension from reaching the relay.</p>
+      </div>
+      <button id="browser-protection-help" type="button">Help</button>
+    </aside>
+
+    <nav class="tabs" role="tablist" aria-label="Fishingbot views">
+      <button class="tab active" type="button" role="tab" aria-selected="true" data-view="account">World Map</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" data-view="legal">Legal &amp; policy</button>
+    </nav>
+
+    <!-- The map renderer is staged here and mounted only inside the authenticated World Map workspace. -->
+    <div id="profile-map-staging" hidden aria-hidden="true">
+        <div id="world-map-root" class="world-map-root" aria-label="Interactive Fishingbot world map">
+          <div class="frame-root">
+            <div class="map-toolbar">
+              <span class="map-hint">Drag · scroll · zoom controls</span>
+              <div class="search-wrap">
+                <input class="search-input" id="searchInput" type="search" placeholder="Find an area, fish or perk" aria-label="Find an area, fish or perk" autocomplete="off" aria-controls="searchResults" aria-expanded="false" />
+                <ul class="search-results" id="searchResults" role="listbox" hidden></ul>
+              </div>
+              <div class="toolbar-group">
+                <button class="dex-toolbar-btn" type="button" id="zoomOutBtn" aria-label="Zoom out">−</button>
+                <input class="zoom-input" id="zoomLabel" type="text" inputmode="numeric" value="100%" aria-label="Zoom level, percent. Type a value and press Enter." />
+                <button class="dex-toolbar-btn" type="button" id="zoomInBtn" aria-label="Zoom in">+</button>
+                <button class="dex-toolbar-btn" type="button" id="recenterBtn">Recenter</button>
+              </div>
+            </div>
+          
+            <div class="map-statusbar">
+              <div class="map-menu" id="mapMenu">
+                <button class="menu-toggle" type="button" id="menuToggle" aria-expanded="true" aria-controls="menuBody"><span class="compass"><svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><rect x="4" y="0" width="1" height="1"/><rect x="3" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="7" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="7" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/><rect x="7" y="5" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="4" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/><rect x="3" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="5" y="7" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/></svg></span><span class="menu-title">Fishing</span><span class="chev" id="menuChev" aria-hidden="true">▾</span></button>
+                <div class="menu-body cartouche" id="menuBody">
+                  <div class="fish-hud" role="region" aria-label="Fishing status">
+                    <div class="hud-cell"><span class="hud-label">Double Catch</span><span class="hud-value" id="dcLevel">Lv.0</span><span class="hud-sub" id="dcChance">0% chance</span><span class="hud-bar" aria-hidden="true"><span class="hud-fill" id="dcFill"></span></span></div>
+                    <div class="hud-cell hud-switch" id="dcSwitchCell" hidden>
+                      <button class="switch" id="switchDouble" type="button" role="switch" aria-checked="true" aria-label="Use Double Catch"><span class="knob"></span></button>
+                      <span class="hud-label">Use Double Catch</span>
+                    </div>
+                    <div class="hud-cell hud-switch">
+                      <button class="switch" id="switchFish" type="button" role="switch" aria-checked="true" aria-label="Use fishing areas"><span class="knob"></span></button>
+                      <span class="hud-label">Use fishing areas</span>
+                    </div>
+                    <div class="hud-cell hud-location"><span class="hud-label">Current location</span><span class="hud-value" id="locationLabel">Normal waters</span></div>
+                    <button class="dex-toolbar-btn" type="button" id="deselectBtn">Deselect</button>
+                  </div>
+                </div>
+              </div>
+              <div class="map-treasury" aria-live="polite"><span class="hud-label">Treasury</span><span class="hud-value brass" id="treasuryValue">0</span></div>
+            </div>
+            <div class="map-window" id="mapWindow" tabindex="0" role="application" aria-label="World map of fishing areas. Drag to move; use the zoom controls and select an area to open it.">
+              <div class="world" id="world">
+                <img class="map-art" data-map-src="world-map/sea-layer.svg?v=2" alt="" draggable="false">
+                <svg class="sea-lanes" id="seaLanes" viewBox="0 0 1408 1380" preserveAspectRatio="none" aria-hidden="true"></svg>
+                <img class="map-art" data-map-src="world-map/land-layer.svg?v=2" alt="" draggable="false">
+                <svg class="sea-lanes harbor-layer" id="harborLayer" viewBox="0 0 1408 1380" preserveAspectRatio="none" aria-hidden="true"></svg>
+                <div class="pins" id="pins"></div>
+                <div class="island-label" style="left: 14.35%; top: 62.5%;" aria-hidden="true">Tides Kingdom</div>
+              </div>
+              <div class="area-popup" id="areaPopup" role="dialog" aria-modal="false" aria-labelledby="popupTitle" tabindex="-1"></div>
+              <span class="popup-arrow" id="popupArrow" aria-hidden="true"></span>
+              <div class="map-toast" id="mapToast" role="status" aria-live="polite" hidden></div>
+              <div class="empty-note" id="emptyNote">Loading areas…</div>
+            </div>
+            <div class="map-footbar">
+              <div class="map-legend cartouche-legend" aria-hidden="true">
+                <div class="row"><span class="lg-chip"></span><span class="lg-text">Area: click to open</span></div>
+                <div class="row"><span class="lg-chip lk"></span><span class="lg-text">Locked</span></div>
+                <div class="row"><span class="lg-chip bt"></span><span class="lg-text">Your fishing area</span></div>
+              </div>
+              <button class="expand-btn" type="button" id="expandBtn" aria-expanded="false">Expand</button>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <section id="view-account" class="view active" role="tabpanel">
+      <div id="account-gate" class="account-gate">
+        <div class="section-heading"><h2>Your Fishingbot World Map</h2><span class="section-note">MAP-FIRST PLAYER HUB</span></div>
+        <div class="account-intro">
+          <strong>Connect your Fishingbot account</strong>
+          <p id="identity-help">Share your account identity with this Extension. Fishingbot matches your platform username to your game data in the streamer's running local Fishingbot app. Your private data stays in that streamer's local database and is only returned to your linked account.</p>
+        </div>
+        <div class="account-actions">
+          <button id="identity-share" class="primary-action" type="button">Share account identity</button>
+          
+          <button id="account-refresh" class="refresh-button" type="button">Refresh connection</button>
+        </div>
+        <div id="account-status" class="status-line" role="status">Waiting for account authorization…</div>
+      </div>
+      <div id="account-workspace" hidden>
+        <div class="account-profile">
+          <img id="account-avatar" alt="" hidden>
+          <div class="account-profile-copy"><strong id="account-name">Fishingbot account</strong><span id="account-login"></span></div>
+          <button id="account-reload" class="refresh-button" type="button">Refresh</button>
+        </div>
+        <nav class="private-tabs" aria-label="World map and owner controls">
+          <button type="button" class="private-tab active" data-private-view="areas">World Map</button>
+          <button type="button" class="private-tab" data-private-view="master-admin" hidden>Master Admin</button>
+        </nav>
+        <div id="private-status" class="status-line" role="status"></div>
+        <div id="private-content" class="private-content" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="view-legal" class="view legal-view" role="tabpanel" hidden>
+      <div class="section-heading"><h2>Legal &amp; Extension policy</h2><span class="section-note">FREE SOFTWARE</span></div>
+      <section class="help-block">
+        <div class="help-kicker">01 / NON-MONETIZED SOFTWARE</div>
+        <h3>Free to use</h3>
+        <p>Fishingbot Twitch Extension is provided free of charge. It is a non-monetized community feature: this Extension does not sell subscriptions, paid access, paid upgrades, virtual currency or in-Extension purchases. No payment is required to open the World Map or use its included features.</p>
+      </section>
+      <section class="help-block">
+        <div class="help-kicker">02 / IDENTITY AND PLAYER DATA</div>
+        <h3>Account linking is optional</h3>
+        <p>The public map shell can load without sharing your identity. To view private player progress or make account changes, use Twitch's identity-sharing prompt and approve it. Fishingbot uses the authenticated Twitch identity to request the matching player profile; it must not let one viewer retrieve another viewer's private inventory or settings.</p>
+        <p>Private account requests are sent over HTTPS to the Fishingbot relay and are handled by the connected broadcaster's Fishingbot service. Do not share your Twitch login, access token or account credentials with anyone.</p>
+      </section>
+      <section class="help-block">
+        <div class="help-kicker">03 / SERVICE AND TRADEMARKS</div>
+        <h3>Third-party platform notice</h3>
+        <p>Fishingbot is an independent community project and is not sponsored, endorsed or administered by Twitch. Twitch names and marks remain the property of their respective owners. Availability depends on Twitch Extension services, the Fishingbot relay and the broadcaster's local application.</p>
+      </section>
+      <section class="help-block">
+        <div class="help-kicker">04 / ACCEPTABLE USE</div>
+        <h3>Use the Extension responsibly</h3>
+        <p>Do not attempt to bypass access controls, impersonate another player, disrupt the relay or use the Extension to harass other viewers. Game features, catch chances and available actions are controlled by the current Fishingbot build and broadcaster configuration.</p>
+      </section>
+    </section>
+
+    <footer class="footer"><span>FISHINGBOT</span><span id="channel-name">COMMUNITY EXTENSION</span></footer>
+  </main>
+  <script src="account.js"></script>
+  <script src="world-map/map.js"></script>
+  <script src="component.js"></script>
+</body>
+</html>

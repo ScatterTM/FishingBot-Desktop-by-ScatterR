@@ -1,0 +1,308 @@
+/* Alert and banner styles, shared by the OBS overlay page and the Broadcaster preview.
+   Keep the class names in sync with OVERLAY_STYLES, OVERLAY_LUCK_STYLES and OVERLAY_ANIMATIONS in lib/overlay.js.
+   Each style has its own silhouette and surface, so they read apart without the accent colour.
+   Uses the site fonts when they are loaded, and plain fallbacks otherwise.
+   Alert sizes are in em, so --ovx-size (Alert size) scales the whole alert, and --ovx-scale (Text size) scales the text. */
+
+.ovx-alert, .ovx-luck {
+  --accent: #C9A227;
+  box-sizing: border-box;
+  position: relative;
+  color: var(--ovx-fg, #EDE8DC);
+  font-family: var(--font-body, 'Archivo', 'Helvetica Neue', Helvetica, sans-serif);
+}
+
+/* Whole-alert size. Everything inside is sized in em from this, so one value scales the card. */
+.ovx-alert { font-size: calc(16px * var(--ovx-size, 1)); }
+
+.ovx-tier, .ovx-line { display: block; }
+.ovx-tier {
+  font-family: var(--font-mono, 'JetBrains Mono', Consolas, monospace);
+  font-size: .6875em; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent);
+}
+.ovx-line {
+  font-family: var(--font-display, 'Bricolage Grotesque', Georgia, serif);
+  font-size: calc(1.3125em * var(--ovx-scale, 1)); font-weight: 700; letter-spacing: -.01em; line-height: 1.25;
+  margin-top: .25em; overflow-wrap: anywhere;
+}
+.ovx-line b { color: var(--accent); font-weight: 800; }
+.ovx-upper .ovx-line { text-transform: uppercase; letter-spacing: .02em; }
+
+/* Header row: the rarity label and the viewer's luck and rod weight sit on one baseline. */
+.ovx-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2em .8em; min-width: 0; max-width: 100%; }
+.ovx-head .ovx-tier { display: block; }
+.ovx-stats {
+  display: block; margin: 0; min-width: 0; max-width: 100%;
+  white-space: normal; overflow-wrap: anywhere;
+  font-family: var(--font-mono, 'JetBrains Mono', Consolas, monospace);
+  font-size: .6875em; font-weight: 600; letter-spacing: .08em;
+  color: var(--accent);
+}
+
+/* Channel points bar inside the banner: a label above a thin track. */
+.ovx-pts { display: block; margin-top: .45em; min-width: 14em; }
+.ovx-pts-label {
+  display: block; margin-bottom: .3em;
+  font-family: var(--font-mono, 'JetBrains Mono', Consolas, monospace);
+  font-size: .66em; letter-spacing: .08em; text-transform: uppercase; opacity: .85;
+}
+.ovx-pts-track { display: block; height: .4em; background: rgba(237, 232, 220, .16); }
+.ovx-pts-fill { display: block; height: 100%; background: var(--accent); transition: width .6s ease; }
+
+/* ---- Alert styles: each one has a different shape and surface ---- */
+
+/* Card: a square dark panel, thick accent edge on the left and a cut top-right corner. */
+.ovx-style-card {
+  background: var(--ovx-bg-fill, #050807);
+  border-left: .25em solid var(--accent);
+  padding: .9em 1.25em .9em 1em;
+  clip-path: polygon(0 0, calc(100% - 1.1em) 0, 100% 1.1em, 100% 100%, 0 100%);
+}
+
+/* Pill: one compact capsule with a glowing dot. No tier label. */
+.ovx-style-pill {
+  display: flex; align-items: center; gap: .625em;
+  width: max-content; max-width: 100%;
+  background: var(--ovx-bg-fill, #050807);
+  border: 1px solid rgba(237, 232, 220, .18);
+  border-radius: 999px;
+  padding: .5em 1.2em .5em .75em;
+}
+.ovx-style-pill::before {
+  content: ''; width: .5em; height: .5em; flex: 0 0 auto; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 .75em var(--accent);
+}
+.ovx-style-pill .ovx-tier { display: none; }
+.ovx-style-pill .ovx-line { margin-top: 0; font-size: calc(1em * var(--ovx-scale, 1)); }
+
+/* Banner: a full-width strip with a thick accent rule above and below and a colour wash from the left. */
+.ovx-style-banner {
+  width: 100%; max-width: none;
+  background: var(--ovx-bg-fill, linear-gradient(90deg, color-mix(in srgb, var(--accent) 45%, #050807) 0%, #050807 70%));
+  border-top: .3em solid var(--accent);
+  border-bottom: .3em solid var(--accent);
+  padding: .8em 1.4em;
+}
+.ovx-style-banner .ovx-line { font-size: calc(1.25em * var(--ovx-scale, 1)); text-transform: uppercase; letter-spacing: .03em; }
+
+/* Ticket: light paper with a coloured stub on the left and a dashed tear line. */
+.ovx-style-ticket {
+  display: flex; align-items: stretch;
+  background: var(--ovx-bg-fill, #EDE8DC); color: var(--ovx-fg, #0A0E0D);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
+}
+.ovx-style-ticket .ovx-head {
+  flex: 0 0 auto; flex-direction: column; justify-content: center; gap: .3em;
+  padding: .8em .9em; background: var(--accent); color: #0A0E0D;
+  border-right: 2px dashed rgba(10, 14, 13, .4);
+}
+.ovx-style-ticket .ovx-tier { color: #0A0E0D; opacity: .8; }
+.ovx-style-ticket .ovx-stats { color: #0A0E0D; opacity: .8; }
+.ovx-style-ticket .ovx-line { flex: 1 1 auto; align-self: center; margin: 0; padding: .8em 1.1em; color: var(--ovx-fg, #0A0E0D); }
+.ovx-style-ticket .ovx-line b { color: var(--accent); filter: brightness(.7); }
+
+/* Playful: a chunky rounded bubble with a hard accent shadow and a rounded rarity chip. */
+.ovx-style-playful {
+  background: var(--ovx-bg-fill, #1E2B27);
+  border: .1875em solid var(--accent);
+  border-radius: 1.1em;
+  box-shadow: .3em .3em 0 var(--accent);
+  padding: .75em 1.25em .85em;
+}
+.ovx-style-playful .ovx-tier {
+  display: inline-block; margin-bottom: .35em; padding: .2em .7em; border-radius: 999px;
+  background: var(--accent); color: #0A0E0D; opacity: 1; font-weight: 600;
+}
+.ovx-style-playful .ovx-line b { background: var(--accent); color: #0A0E0D; padding: 0 .3em; border-radius: .35em; }
+
+/* Glass: a pale frosted pane that blurs whatever is behind it, with a bright top edge. */
+.ovx-style-glass {
+  background: var(--ovx-bg-fill, rgba(255, 255, 255, .14));
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, .42);
+  border-radius: 1.2em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 .6em 1.6em rgba(0, 0, 0, .3);
+  padding: .9em 1.3em;
+  color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
+}
+.ovx-style-glass .ovx-tier { color: #FFFFFF; opacity: .85; }
+
+/* Tag: a solid rarity label on a slanted tab, sitting on an underlined text line. */
+.ovx-style-tag { background: transparent; border: 0; padding: 0; }
+.ovx-style-tag .ovx-head {
+  display: inline-flex; align-items: center; margin: 0 0 .35em; padding: .35em 1.1em .35em .7em;
+  background: var(--accent); color: #0A0E0D;
+  clip-path: polygon(0 0, 100% 0, calc(100% - .6em) 100%, 0 100%);
+}
+.ovx-style-tag .ovx-tier { color: #0A0E0D; opacity: 1; font-weight: 700; letter-spacing: .12em; }
+.ovx-style-tag .ovx-stats { color: #0A0E0D; opacity: .8; }
+.ovx-style-tag .ovx-line {
+  margin: 0; padding: .5em .8em .55em;
+  background: var(--ovx-bg-fill, #050807);
+  border-bottom: .2em solid var(--accent);
+}
+
+/* Terminal: monospace on a dark panel with faint scan lines, a prompt mark and a blinking cursor. */
+.ovx-style-terminal {
+  background: var(--ovx-bg-fill, #030605);
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 3px);
+  border: 1px solid rgba(237, 232, 220, .16);
+  padding: .8em 1em;
+}
+.ovx-style-terminal .ovx-tier { color: var(--accent); letter-spacing: .22em; }
+.ovx-style-terminal .ovx-line {
+  font-family: var(--font-mono, 'JetBrains Mono', Consolas, monospace);
+  font-size: calc(.95em * var(--ovx-scale, 1)); font-weight: 500; letter-spacing: -.01em;
+}
+.ovx-style-terminal .ovx-line::before { content: '> '; color: var(--accent); }
+.ovx-style-terminal .ovx-line::after { content: '_'; color: var(--accent); animation: ovx-blink 1s steps(1) infinite; }
+.ovx-style-terminal .ovx-line b { color: var(--accent); }
+
+/* ---- Entrance animations ---- */
+.ovx-anim-slide { animation: ovx-slide .42s cubic-bezier(.2, .7, .2, 1) both; }
+.ovx-anim-fade  { animation: ovx-fade .6s ease both; }
+.ovx-anim-pop   { animation: ovx-pop .5s cubic-bezier(.2, 1.3, .4, 1) both; }
+.ovx-out { opacity: 0; transition: opacity .4s ease-in; }
+@keyframes ovx-slide { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+@keyframes ovx-fade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ovx-pop   { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes ovx-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ovx-anim-slide, .ovx-anim-fade, .ovx-anim-pop { animation: ovx-fade .2s ease both; }
+  .ovx-style-terminal .ovx-line::after { animation: none; }
+}
+
+/* ---- Luck event banner. Each style has its own shape, like the alerts above. ---- */
+.ovx-luck {
+  display: none;
+  background: var(--ovx-bg-fill, #050807);
+  padding: 8px 14px;
+  max-width: 92vw;
+  font-family: var(--font-mono, 'JetBrains Mono', Consolas, monospace);
+  font-size: calc(13px * var(--ovx-luck-scale, 1)); letter-spacing: .08em; text-transform: uppercase;
+  white-space: normal; overflow-wrap: anywhere;
+}
+.ovx-luck b { color: var(--accent); font-weight: 500; }
+
+/* Bar: a slim full-width strip with a thick accent block on the left. */
+.ovx-luck-bar {
+  border-left: .5em solid var(--accent);
+  padding: 8px 16px 8px 14px;
+}
+
+/* Fade: a wide strip with the accent fading in from the left, bold display text. */
+.ovx-luck-fade {
+  background: var(--ovx-bg-fill, linear-gradient(90deg, color-mix(in srgb, var(--accent) 34%, #050807) 0%, #050807 70%));
+  border-bottom: 2px solid var(--accent);
+  padding: 12px 18px;
+  font-family: var(--font-display, 'Bricolage Grotesque', Georgia, serif);
+  font-size: calc(16px * var(--ovx-luck-scale, 1)); font-weight: 700;
+  letter-spacing: .005em; text-transform: none;
+}
+.ovx-luck-fade b { font-weight: 800; }
+
+/* Pill: a floating capsule with a glowing dot, sized to its text. */
+.ovx-luck-pill {
+  width: max-content; margin: 0 auto;
+  border: 1px solid rgba(237, 232, 220, .18);
+  border-radius: 999px;
+  padding: 7px 16px 7px 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.ovx-luck-pill::before {
+  content: ''; display: inline-block; width: .6em; height: .6em; margin-right: .6em; vertical-align: middle;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 .8em var(--accent);
+}
+
+/* Ticket: light paper strip with dashed perforation above and below. */
+.ovx-luck-ticket {
+  background: var(--ovx-bg-fill, #EDE8DC); color: var(--ovx-fg, #0A0E0D);
+  border-top: 2px dashed rgba(10, 14, 13, .4);
+  border-bottom: 2px dashed rgba(10, 14, 13, .4);
+  padding: 10px 18px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
+}
+.ovx-luck-ticket b { color: var(--accent); filter: brightness(.7); }
+
+/* Playful: a rounded capsule with a hard accent shadow. */
+.ovx-luck-playful {
+  width: max-content; max-width: 100%;
+  border: .1375em solid var(--accent);
+  border-radius: 999px;
+  background: var(--ovx-bg-fill, #1E2B27);
+  box-shadow: .25em .25em 0 var(--accent);
+  padding: .55em 1.25em;
+  font-family: var(--font-display, 'Bricolage Grotesque', Georgia, serif);
+  font-size: calc(15px * var(--ovx-luck-scale, 1)); font-weight: 700; letter-spacing: .01em; text-transform: none;
+}
+.ovx-luck-playful b { background: var(--accent); color: #0A0E0D; padding: 0 .35em; border-radius: .4em; font-weight: 800; }
+
+/* Glass: a pale frosted pill, the same family as the glass alert. */
+.ovx-luck-glass {
+  width: max-content; max-width: 100%;
+  background: var(--ovx-bg-fill, rgba(255, 255, 255, .14));
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, .42);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 .6em 1.6em rgba(0, 0, 0, .3);
+  padding: 8px 20px;
+  color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
+}
+
+/* Ribbon: a solid accent band with pointed ends and dark bold text. */
+.ovx-luck-ribbon {
+  width: max-content; max-width: 100%;
+  background: var(--ovx-bg-fill, var(--accent));
+  color: var(--ovx-fg, #0A0E0D);
+  clip-path: polygon(.9em 0, 100% 0, calc(100% - .9em) 50%, 100% 100%, .9em 100%, 0 50%);
+  padding: 8px 2.2em; font-weight: 800; letter-spacing: .05em;
+}
+.ovx-luck-ribbon b { color: inherit; background: rgba(0, 0, 0, .18); padding: 0 .3em; }
+
+/* Terminal: monospace with scan lines, a prompt mark and a blinking cursor. */
+.ovx-luck-terminal {
+  width: max-content; max-width: 100%;
+  background: var(--ovx-bg-fill, #030605);
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 3px);
+  border: 1px solid rgba(237, 232, 220, .16);
+  padding: 7px 14px;
+  text-transform: none; letter-spacing: .02em;
+}
+.ovx-luck-terminal::before { content: '> '; color: var(--accent); }
+.ovx-luck-terminal::after { content: '_'; color: var(--accent); animation: ovx-blink 1s steps(1) infinite; }
+.ovx-luck-terminal b { color: var(--accent); }
+
+/* Font options for the alert text. */
+.ovx-font-display .ovx-line { font-family: var(--font-display, 'Bricolage Grotesque', Georgia, serif); }
+.ovx-font-body .ovx-line    { font-family: var(--font-body, 'Archivo', 'Helvetica Neue', Helvetica, sans-serif); font-weight: 600; }
+.ovx-font-mono .ovx-line    { font-family: var(--font-mono, 'JetBrains Mono', Consolas, monospace); font-weight: 500; font-size: .92em; letter-spacing: -.01em; }
+.ovx-font-serif .ovx-line   { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-style: italic; }
+
+/* Rarity colours, the same values as the website (--tier-* in styles/index.css). */
+.ovx-rarity-secret    { --accent: #F4F0E6; }
+.ovx-rarity-godly     { --accent: #E1452C; }
+.ovx-rarity-legendary { --accent: #DFA62C; }
+.ovx-rarity-epic      { --accent: #C4703A; }
+.ovx-rarity-rare      { --accent: #8C9A72; }
+.ovx-rarity-uncommon  { --accent: #4E7A60; }
+.ovx-rarity-common    { --accent: #6A6E68; }
+.ovx-rarity-treasury  { --accent: #2F7D6E; }
+
+/* Alignment. Margins place a card, pill or capsule; text-align places the words inside it.
+   Placed last, so they win over the pill and banner margins above. */
+.ovx-align-left, .ovx-luck-align-left { margin-left: 0; margin-right: auto; text-align: left; }
+.ovx-align-center, .ovx-luck-align-center { margin-left: auto; margin-right: auto; text-align: center; }
+.ovx-align-right, .ovx-luck-align-right { margin-left: auto; margin-right: 0; text-align: right; }
+
+/* Admin preview: the host fills the stage, so the alignment shows inside it. */
+.ov-preview-stage > div { width: 100%; }
+
+/* Fixes: the ribbon's points bar used the ribbon colour for its fill, so the fill vanished.
+   The terminal luck cursor sat on its own line below the bar; it now sits at the top corner. */
+.ovx-luck-ribbon .ovx-pts-track { background: rgba(0, 0, 0, .28); }
+.ovx-luck-ribbon .ovx-pts-fill { background: #0A0E0D; }
+.ovx-luck-terminal { position: relative; }
+.ovx-luck-terminal::after { position: absolute; right: 12px; top: 7px; }

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fishingbot setup</title>
+  <link rel="stylesheet" href="component.css">
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+  <style>
+    body{height:auto;min-height:100%;overflow:auto;background:var(--ink-100);padding:18px}
+    .config{max-width:680px;margin:0 auto;padding:18px 0;border-top:1px solid var(--bone-12);border-bottom:1px solid var(--bone-12)}
+    .config h2{margin:20px 0 8px;color:var(--bone);font:700 12px/1.25 var(--font-display);letter-spacing:.02em}
+    .config p,.config li{color:var(--bone-60);font:400 12px/1.6 var(--font-body)}
+    .config code{color:var(--brass);font:500 10px/1.4 var(--font-mono)}
+    .config strong{color:var(--bone)}
+  </style>
+</head>
+<body>
+  <main class="config">
+    <div class="eyebrow">Fishingbot / Setup</div>
+    <h1>Connect the video component</h1>
+    <h2>Streamer setup</h2>
+    <ol>
+      <li>Install and run the Fishingbot desktop app.</li>
+      <li>Open Fishingbot Control Centre → Channel connection → Connect account and approve the one-time login code.</li>
+      <li>Open your creator dashboard → Extensions and activate Fishingbot Video Component on your channel.</li>
+    </ol>
+    <h2>What viewers see</h2>
+    <p>The component provides live channel totals, community leaderboard and loot catalogue. The interactive world map is private and appears only inside My Account → World Map, where linked players can unlock and upgrade areas directly on the map and open Tides Kingdom features. Public catalogue views are served by the shared Fishingbot relay using the streamer's running local app.</p>
+    <p>Enable <strong>Identity Linking</strong> in the Extension capabilities. Viewers watching another channel can choose Share Account Identity in My Account and approve Twitch's permission prompt to access their own inventory, Fishdex, progression, purchases, perks, Personal Pond and trades. When the streamer opens FishingHub on their own channel, Twitch does not show an identity-sharing prompt to the broadcaster; Fishingbot instead verifies the signed broadcaster role against the authenticated desktop connection for that same channel. Private requests are handled by the streamer's local Fishingbot database; no database or Extension Secret is exposed to viewers.</p><p>For the Extension version you intend to run, add exactly <code>https://fishingbot-extension-relay.onrender.com</code> under <strong>Allowlist for URL Fetching Domains</strong> (not Image Domains or Media Domains), then save and activate that same version. The allowlist controls HTTPS requests made by the viewer's Extension iframe; it is separate from the streamer's desktop WebSocket connection. If the desktop says Connected but viewers see a relay error, check the active version's URL Fetching Domains setting. The component reports a specific <code>connect-src</code> Content Security Policy error when Twitch blocks the request. The streamer must keep Fishingbot running and connected to the channel for private actions and live public catalogue requests. Relay diagnostics use <code>https://fishingbot-extension-relay.onrender.com/health</code>; it must return JSON with <code>ok: true</code>.</p>
+    <h2>My Account and Twitch identity</h2>
+    <p>If you are the broadcaster viewing your own channel, use <strong>Connect channel profile</strong>; Twitch intentionally does not open the Share Identity prompt for the channel owner. Fishingbot verifies the channel against the desktop app that is already authenticated to Twitch. If you are a regular viewer, select <strong>Share account identity</strong> and approve Twitch's prompt. If no prompt appears, verify Identity Linking is enabled for the active Extension version.</p>
+    <h2>Viewer connection troubleshooting</h2>
+    <p>Some browser privacy features and ad blockers can prevent the Twitch Extension from reaching the relay, even while the streamer's desktop app is connected. Brave users can open the lion icon on the Twitch channel page and lower Shields for Twitch, then reload the player. In uBlock Origin, AdBlock, AdGuard, Ghostery or network-level filters, allow <code>fishingbot-extension-relay.onrender.com</code>. The Extension cannot reliably identify which blocker caused a failed request, so this warning is a troubleshooting hint rather than a confirmed detection.</p>
+    <p>If the browser console reports a Twitch <code>connect-src</code> Content Security Policy violation, add <code>https://fishingbot-extension-relay.onrender.com</code> under <strong>URL Fetching Domains</strong> for the currently activated Extension version, then save and activate that version. A browser-blocker issue is separate from the streamer desktop WebSocket connection.</p>
+  </main>
+</body>
+</html>

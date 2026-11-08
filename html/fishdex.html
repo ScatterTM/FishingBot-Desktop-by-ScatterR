@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fish Index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@10..48,500;10..48,700;10..48,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ==================================================================
+     This page is the standalone Fish Index. It shares the token set,
+     the type stack, the icon sprite and the ruled-surface grammar with
+     index.html, so hitting the two in the same tab looks like one
+     product rather than two deployments of the same idea.
+     ================================================================== */
+
+  :root {
+    /* --- ink (surfaces) --- */
+    --ink-000: #050807;
+    --ink-050: #0A0E0D;
+    --ink-200: #18211F;
+
+    /* --- bone (text + hairlines) --- */
+    --bone: #EDE8DC;
+    --bone-60: rgba(237, 232, 220, 0.60);
+    --bone-40: rgba(237, 232, 220, 0.40);
+    --bone-24: rgba(237, 232, 220, 0.24);
+    --bone-12: rgba(237, 232, 220, 0.12);
+    --bone-07: rgba(237, 232, 220, 0.07);
+    --bone-04: rgba(237, 232, 220, 0.04);
+
+    /* --- signal: the one loud colour --- */
+    --signal: #E4572E;
+
+    /* --- brass: value only --- */
+    --brass: #C9A227;
+    --brass-hi: #E0BC46;
+
+    /* --- rarity ramp: one warm arc, ordered by value --- */
+    --tier-secret:    #F4F0E6;
+    --tier-godly:     #E1452C;
+    --tier-legendary: #DFA62C;
+    --tier-epic:      #C4703A;
+    --tier-rare:      #8C9A72;
+    --tier-uncommon:  #4E7A60;
+    --tier-common:    #6A6E68;
+    --tier-treasury:  #2F7D6E;
+
+    /* Text-weight companions for the ramp. A mark (the left accent bar, the
+       meter fill, an icon) only needs 3:1; a tier NAME is text and needs
+       4.5:1 on the lightest ink surface it can land on. These hold each hue
+       exactly and lift only the lightness, so the ramp still reads as one
+       warm arc. Naming the two jobs separately is what stops a mark colour
+       from being used as a label colour by accident. */
+    --tier-secret-hi:    #F4F0E6;
+    --tier-godly-hi:     #E76B57;
+    --tier-legendary-hi: #DFA62C;
+    --tier-epic-hi:      #CA7E4C;
+    --tier-rare-hi:      #8C9A72;
+    --tier-uncommon-hi:  #639C7A;
+    --tier-common-hi:    #8E928C;
+    --tier-treasury-hi:  #3CA18D;
+
+    /* --- structure: no rounding, no elevation. Hairlines do the work. --- */
+    --rule: 1px solid var(--bone-12);
+    --grid: 88px;
+
+    /* --- type --- */
+    --font-display: 'Bricolage Grotesque', 'Archivo', Georgia, serif;
+    --font-body: 'Archivo', 'Helvetica Neue', Helvetica, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+    /* --- motion: short, eased, never bouncy --- */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --t-fast: 130ms;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--ink-050);
+    /* A hairline column grid, not a decorative wash. The two gradients
+       are flat colours, so the page has structure without ornament. */
+    background-image:
+      repeating-linear-gradient(90deg, var(--bone-04) 0 1px, transparent 1px var(--grid));
+    color: var(--bone);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--signal); color: var(--ink-000); }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px 96px;
+  }
+
+  /* ==================================================================
+     MASTHEAD
+     Asymmetric: the wordmark hard left, the viewer identity and the
+     way out pushed to the right margin, a 2px bone rule underneath with
+     signal registration ticks hanging off it.
+     ================================================================== */
+  header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 16px 64px;
+    padding: 64px 0 28px;
+    border-bottom: 2px solid var(--bone);
+    position: relative;
+  }
+
+  header::before,
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    width: 5px;
+    height: 6px;
+    background: var(--signal);
+  }
+  header::before { left: 0; }
+  header::after { right: 0; }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 7vw, 5.4rem);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 0.86;
+  }
+
+  /* The second half of the mark drops to a lighter weight and takes the
+     signal colour. A colour swap, not a gradient fill. */
+  h1 span {
+    display: block;
+    margin-top: 0.06em;
+    padding-left: 0.06em;
+    color: var(--signal);
+    font-weight: 500;
+  }
+
+  .masthead-sub {
+    grid-column: 1 / -1;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--bone-24);
+    margin-top: 26px;
+    padding-top: 14px;
+    border-top: var(--rule);
+  }
+  .masthead-sub b { color: var(--bone-60); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .profile-chip {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    align-self: end;
+    padding-bottom: 0.4em;
+  }
+
+  .profile-chip img {
+    width: 34px;
+    height: 34px;
+    border-radius: 0;
+    display: block;
+    background: var(--ink-200);
+  }
+
+  .profile-chip span {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logout-link {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--bone-40);
+    border: 0;
+    border-bottom: 1px solid var(--bone-24);
+    padding: 0 0 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+  }
+  .logout-link:hover { color: var(--signal); border-bottom-color: var(--signal); }
+
+  /* ==================================================================
+     LOGGED-OUT
+     A single ruled column, set off the left edge. No card, no shadow,
+     no centred box: the login state is a typographic statement.
+     ================================================================== */
+  .login-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 64px;
+    align-items: start;
+    margin-top: 56px;
+    padding-top: 40px;
+    border-top: var(--rule);
+  }
+
+  .login-panel h2 {
+    grid-column: 1;
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 4.4vw, 3.1rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.02;
+    margin-bottom: 18px;
+  }
+
+  .login-panel p {
+    grid-column: 1;
+    color: var(--bone-40);
+    font-size: 0.95rem;
+    line-height: 1.62;
+    max-width: 44ch;
+    margin-bottom: 34px;
+  }
+
+  .twitch-btn {
+    grid-column: 1;
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bone);
+    color: var(--ink-000);
+    border: 0;
+    padding: 14px 24px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  }
+  .twitch-btn:hover { background: var(--signal); color: var(--ink-000); }
+  .twitch-btn:hover .ic { color: var(--ink-000); }
+
+  /* The 2px signal bar down the left of the login panel. Structure, not
+     decoration: it is the only vertical rule on the page. */
+  .login-panel::before {
+    content: '';
+    position: absolute;
+    margin-left: -18px;
+    width: 2px;
+    height: 180px;
+    background: var(--signal);
+  }
+  .login-panel { position: relative; }
+
+  /* ==================================================================
+     PROGRESS
+     A ledger header, not a card. The figure is the largest element on
+     the page, because it is the only number the viewer came for.
+     ================================================================== */
+  .progress-panel {
+    margin-top: 52px;
+    border-top: 2px solid var(--bone-24);
+    padding-top: 22px;
+  }
+
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+    margin-bottom: 20px;
+  }
+
+  /* The caption naming the figure. This is a label, not a heading, so it
+     is a <p> set in mono rather than an <h2> pretending to be one. */
+  .progress-top .progress-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bone-24);
+  }
+
+  .progress-figure {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .progress-figure .value {
+    font-family: var(--font-display);
+    font-size: clamp(3.4rem, 9vw, 6.2rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.82;
+    color: var(--bone);
+    font-variant-numeric: tabular-nums;
+  }
+  .progress-figure .value small {
+    font-size: 0.26em;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--signal);
+    vertical-align: super;
+    margin-left: 2px;
+  }
+
+  .progress-figure .caption {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--bone-40);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A 2px rule, not a 10px rounded track. The fill is the only
+     chromatic element in the block. */
+  .progress-track {
+    width: 100%;
+    height: 2px;
+    background: var(--bone-12);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--signal);
+    width: 0;
+    transition: width 520ms var(--ease-out);
+  }
+
+  /* Completion is the one state worth calling out, and it is called out
+     with a mark and a word in the panel's own caption slot. The meter
+     itself does not change colour, so the reward does not override the
+     data encoding. */
+  .progress-seal {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brass-hi);
+  }
+  .progress-seal .ic { width: 14px; height: 14px; }
+  .progress-panel:not(.is-complete) .progress-seal { display: none; }
+
+  /* ==================================================================
+     TIERS
+     Each tier is a ruled slab with a heavy accent bar down its left
+     edge. Same grammar as the loot table on the main page.
+     ================================================================== */
+  .tiers {
+    margin-top: 56px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tier-card {
+    background: none;
+    border: 0;
+    border-bottom: var(--rule);
+    border-left: 4px solid var(--tier-accent, var(--bone-24));
+    transition: border-left-width var(--t-fast) var(--ease-out);
+  }
+  .tier-card:hover { border-left-width: 7px; }
+
+  /* Each tier declares both jobs once, here: --tier-accent for marks and
+     --tier-ink for the tier name. A 4px bar and a 1.15rem word are not the
+     same legibility problem, and painting the name in the bar's colour is
+     what made Common and Uncommon headings unreadable. */
+  .tier-card.unique     { --tier-accent: var(--tier-secret);    --tier-ink: var(--tier-secret-hi); }
+  .tier-card.godly      { --tier-accent: var(--tier-godly);     --tier-ink: var(--tier-godly-hi); }
+  .tier-card.legendary  { --tier-accent: var(--tier-legendary); --tier-ink: var(--tier-legendary-hi); }
+  .tier-card.epic       { --tier-accent: var(--tier-epic);      --tier-ink: var(--tier-epic-hi); }
+  .tier-card.rare       { --tier-accent: var(--tier-rare);      --tier-ink: var(--tier-rare-hi); }
+  .tier-card.uncommon   { --tier-accent: var(--tier-uncommon);  --tier-ink: var(--tier-uncommon-hi); }
+  .tier-card.common     { --tier-accent: var(--tier-common);    --tier-ink: var(--tier-common-hi); }
+  .tier-card.treasury   { --tier-accent: var(--tier-treasury);  --tier-ink: var(--tier-treasury-hi); }
+
+  .tier-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px 18px 18px;
+  }
+
+  .tier-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--tier-ink, var(--tier-accent));
+  }
+  /* The glyph rides with the word it labels, so it takes the same text
+     weight. 17px is small enough that a 2.9:1 mark colour reads as mud. */
+  .tier-name .ic { width: 17px; height: 17px; color: inherit; }
+
+  .tier-count {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--bone-24);
+    white-space: nowrap;
+  }
+  .tier-count b { color: var(--bone-60); font-weight: 500; }
+
+  /* The catch count doubles as a meter: how much of this tier is filled. */
+  .tier-meter {
+    height: 1px;
+    background: var(--bone-07);
+    margin: 0 20px 0 18px;
+  }
+  .tier-meter > span {
+    display: block;
+    height: 100%;
+    background: var(--tier-accent);
+  }
+
+  /* The index itself: a two-column ruled matrix of cells, not a wall of
+     small rounded boxes. */
+  .tier-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0;
+    margin-top: 14px;
+  }
+
+  .item-cell {
+    border-top: var(--rule);
+    border-right: var(--rule);
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.82rem;
+    min-width: 0;
+  }
+
+  .item-cell.caught { color: var(--bone); }
+  .item-cell.caught .item-name { color: var(--bone); }
+
+  .item-cell.locked { color: var(--bone-12); }
+  .item-cell.locked .item-name {
+    color: var(--bone-24);
+    font-family: var(--font-mono);
+    letter-spacing: 0.18em;
+  }
+
+  .item-cell .item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .item-count {
+    flex: none;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--signal);
+  }
+
+  /* ==================================================================
+     STATE
+     A left rule and a mono line. The error variant takes a signal rule
+     so a broken page cannot be mistaken for an empty one.
+     ================================================================== */
+  .loading,
+  .error-box {
+    margin-top: 56px;
+    padding: 48px 0 48px 18px;
+    border-left: 2px solid var(--bone-12);
+    color: var(--bone-40);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.05em;
+    line-height: 1.7;
+  }
+  .error-box { border-left-color: var(--signal); color: var(--bone-60); }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--bone-40);
+    border-bottom: 1px solid var(--bone-24);
+    padding-bottom: 4px;
+    transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+  }
+  .back-link:hover { color: var(--signal); border-bottom-color: var(--signal); }
+
+  /* ==================================================================
+     ICONS
+     Sizes are in em so an icon tracks the font-size of whatever it
+     sits in. Colour is inherited; nothing here hard-codes a value.
+     ================================================================== */
+  .ic {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.125em;
+    flex: none;
+  }
+  .ic-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+  @media (max-width: 620px) {
+    .wrap { padding: 0 18px 72px; }
+    header { padding-top: 44px; gap: 20px 24px; }
+    .profile-chip { grid-row: 2; grid-column: 1 / -1; justify-content: space-between; }
+    .login-panel { grid-template-columns: 1fr; }
+    .login-panel::before { display: none; }
+    .tier-items { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+  }
+
+
+  /* Responsive UX hardening — same Fish Index visual language, safer sizing
+     and overflow behavior across phones, tablets, desktop and landscape. */
+  html { font-size: clamp(14px, 0.18vw + 13.4px, 16px); text-size-adjust: 100%; }
+  body { min-width: 0; overflow-x: hidden; padding-left: max(0px, env(safe-area-inset-left)); padding-right: max(0px, env(safe-area-inset-right)); }
+  img, svg, video, canvas { max-width: 100%; }
+  button, input, select, textarea { font: inherit; max-width: 100%; }
+  button, [role="button"], input[type="button"], input[type="submit"] { min-height: 42px; }
+  input, select, textarea { min-height: 42px; }
+  .wrap, main, section { min-width: 0; }
+  .tier-card, .tier-items, .item-cell, .profile-chip, .progress-panel { min-width: 0; }
+  .item-name, .masthead-sub, .progress-figure, .state-message { overflow-wrap: anywhere; }
+  .tier-items { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+  @media (max-width: 760px) {
+    .wrap { padding-inline: clamp(14px, 4vw, 24px); }
+    header { grid-template-columns: 1fr; gap: 18px 24px; padding-top: 44px; }
+    .profile-chip { grid-column: 1 / -1; justify-content: space-between; }
+    .progress-top { grid-template-columns: 1fr; gap: 10px; }
+    .progress-figure { justify-self: start; }
+  }
+  @media (max-width: 480px) {
+    .wrap { padding-inline: 12px; padding-bottom: 56px; }
+    header { padding-top: 34px; }
+    h1 { font-size: clamp(2.1rem, 13vw, 3.8rem); }
+    .profile-chip { width: 100%; }
+    .login-panel { padding: 18px; }
+    .tier-items { grid-template-columns: 1fr 1fr; }
+    .item-cell { padding-inline: 7px; }
+  }
+  @media (max-width: 340px) {
+    .tier-items { grid-template-columns: 1fr; }
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    header { padding-top: 24px; }
+  }
+
+</style>
+</head>
+<body>
+
+<svg class="ic-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-fish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12c1.5-3.6 5.4-5.8 9.6-5.8 3.4 0 5.6 2.1 5.6 4.1 0 1.1-.9 2-2.1 2 .9 0 1.6.7 1.6 1.7 0 2.1-2.2 3.7-5.3 3.7-5.3 0-8.3-2.7-9.4-5.7Z"/><path d="M17.9 6.6a2.6 2.6 0 0 1 0 4.4"/><path d="M5.2 9.4 2.4 6.6M5.2 14.6l-2.8 2.8"/><circle cx="15.4" cy="11.6" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-twitch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 2.4 2.6 6.2v13.2h5.2v2.4h2.9l2.1-2.4h4.1l4.5-4.5V2.4H4.2Z"/><path d="M10.6 7.4h1.9v5.4h-1.9zM15.4 7.4h1.9v5.4h-1.9z"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 3.2h3.2a1.8 1.8 0 0 1 1.8 1.8v14a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M9.6 16.4 14 12l-4.4-4.4"/><path d="M14 12H3.2"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4"/><path d="m10 6-6 6 6 6"/></symbol>
+  <symbol id="i-check-ring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.8"/><path d="m8.4 12.2 2.6 2.6 4.8-5"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 21.4 20H2.6L12 3.4Z"/><path d="M12 9.6v4.6"/><path d="M12 17.2h.01"/></symbol>
+  <symbol id="i-void" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.4"/><path d="M12 3.4v1.4M12 19.2v1.4M3.4 12h1.4M19.2 12h1.4"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6c.6 3-1.4 4.4-2.6 6S7.2 12 7.2 14a4.8 4.8 0 0 0 9.6 0c0-2.4-1.2-3.6-2-5-.6 1-1.2 1.4-1.6 1.4.4-3-1-6.8-1.2-7.8Z"/></symbol>
+  <symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.4h12l3.4 5.6L12 20.6 2.6 9 6 3.4Z"/><path d="M2.6 9h18.8"/><path d="m9.4 3.4-2 5.6L12 20.6l4.6-11.6-2-5.6"/></symbol>
+  <symbol id="i-shard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.4 5.4 12 12 21.6 18.6 12 12 2.4Z"/><path d="M5.4 12h13.2"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8c0 0 6.4 7 6.4 11.2A6.4 6.4 0 0 1 5.6 14c0-4.2 6.4-11.2 6.4-11.2Z"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c0-8 4-13 16-14 0 12-4 16-12 16-2 0-4-1-4-2Z"/><path d="M4.6 19.4C8 16 12 13 16 11.4"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.6" cy="16.4" r="3.6"/><path d="m10.2 13.8 8.2-8.2"/><path d="m15.4 8.6 2.2 2.2"/><path d="m17.8 6.2 2.2 2.2"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>Fish <span>Index</span></h1>
+    <div id="headerRight"></div>
+    <p class="masthead-sub" id="mastheadSub" hidden></p>
+  </header>
+
+  <div id="content" class="loading">Reading your index from the local database...</div>
+</div>
+
+<script>
+  /* Icons come out of the sprite above. Returns a string so it can be
+     dropped straight into innerHTML. */
+  function icon(name) {
+    return `<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-${name}"></use></svg>`;
+  }
+
+  const TIER_ICON = {
+    unique: 'void', godly: 'flame', legendary: 'gem', epic: 'shard',
+    rare: 'drop', uncommon: 'leaf', common: 'fish', treasury: 'key'
+  };
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /* Ranks render zero-padded in mono so the column is a fixed width and
+     the eye can run straight down it. */
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const nf = new Intl.NumberFormat();
+
+  function setMastheadSub(parts) {
+    const el = document.getElementById('mastheadSub');
+    if (!el) return;
+    el.innerHTML = parts;
+    el.hidden = false;
+  }
+
+  /* THE index percentage, defined once and shared with index.html.
+     The secret tier is one-of-a-kind trophies, so it is excluded from both
+     sides of the ratio. The API's own totalItems/totalCaught include it,
+     so using those directly would make this page disagree with the hub. */
+  const isSecretTier = (tier) => {
+    const id = String(tier.id || '').toLowerCase();
+    const name = String(tier.name || '').trim().toUpperCase();
+    return id === 'unique' || name === 'UNIQUE' || name === 'SECRET';
+  };
+
+  function indexProgress(tiers) {
+    let caught = 0;
+    let total = 0;
+    for (const tier of tiers) {
+      if (!tier || isSecretTier(tier)) continue;
+      for (const item of Array.isArray(tier.items) ? tier.items : []) {
+        total += 1;
+        if (item && item.caught) caught += 1;
+      }
+    }
+    return { caught, total, pct: total > 0 ? Math.round((caught / total) * 100) : 0 };
+  }
+
+  async function init() {
+    const content = document.getElementById('content');
+    const headerRight = document.getElementById('headerRight');
+
+    let me;
+    try {
+      const res = await fetch('/api/auth/me');
+      me = res.ok ? await res.json() : { loggedIn: false };
+    } catch (e) {
+      me = { loggedIn: false };
+    }
+
+    if (!me.loggedIn) {
+      headerRight.innerHTML = '';
+      content.className = '';
+      content.innerHTML = `
+        <section class="login-panel">
+          <h2>See what<br>you've caught.</h2>
+          <p>Log in with your Twitch account to read your personal fish index: every catch you've made, and every one still waiting to be reeled in.</p>
+          <a class="twitch-btn" href="/api/auth/login">
+            ${icon('twitch')}
+            Log in with Twitch
+          </a>
+        </section>`;
+      return;
+    }
+
+    const displayName = me.displayName || me.login || 'Viewer';
+    headerRight.innerHTML = `
+      <div class="profile-chip">
+        <img src="${escapeHtml(me.avatar || '')}" alt="">
+        <span>${escapeHtml(displayName)}</span>
+        <a class="logout-link" href="/api/auth/logout">
+          ${icon('out')}
+          Log out
+        </a>
+      </div>`;
+
+    let dex;
+    try {
+      const res = await fetch('/api/fishdex');
+      if (!res.ok) throw new Error('bad response');
+      dex = await res.json();
+    } catch (e) {
+      content.className = 'error-box';
+      content.innerHTML = `
+        ${icon('warn')}
+        <div>Could not read your index from the local database. Refresh to try again.</div>
+        <a class="back-link" href="/">${icon('arrow-left')} Back to the hub</a>`;
+      return;
+    }
+
+    const tiers = dex.tiers || [];
+    const { caught: caughtNonUnique, total: totalNonUnique, pct } = indexProgress(tiers);
+
+    // Every count on this page comes from the same ratio, so the masthead
+    // colophon and the big figure can never describe different denominators.
+    setMastheadSub(
+      `<b>${nf.format(caughtNonUnique)}</b> caught` +
+      ` &nbsp;/&nbsp; <b>${nf.format(totalNonUnique)}</b> catalogued` +
+      ` &nbsp;/&nbsp; <b>${tiers.length}</b> tiers` +
+      ` &nbsp;/&nbsp; secret tier not counted`
+    );
+
+    const tiersHtml = tiers.map((tier) => {
+      const items = tier.items || [];
+      const caughtInTier = items.filter((i) => i.caught).length;
+      const fill = items.length ? Math.round((caughtInTier / items.length) * 100) : 0;
+      const mark = icon(TIER_ICON[tier.id] || 'fish');
+
+      const itemsHtml = items.map((item) => {
+        if (item.caught) {
+          const n = Number(item.count) || 0;
+          return `<div class="item-cell caught">
+            <span class="item-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+            ${n > 1 ? `<span class="item-count">&times;${n}</span>` : ''}
+          </div>`;
+        }
+        return `<div class="item-cell locked">
+          <span class="item-name" aria-label="Not yet caught">&mdash;&mdash;&mdash;</span>
+        </div>`;
+      }).join('');
+
+      return `
+        <section class="tier-card ${escapeHtml(tier.id)}">
+          <div class="tier-header">
+            <span class="tier-name">${mark}${escapeHtml(tier.name)}</span>
+            <span class="tier-count"><b>${pad2(caughtInTier)}</b> / ${pad2(items.length)}</span>
+          </div>
+          <div class="tier-meter"><span style="width:${fill}%"></span></div>
+          <div class="tier-items">${itemsHtml}</div>
+        </section>`;
+    }).join('');
+
+    const complete = totalNonUnique > 0 && caughtNonUnique === totalNonUnique;
+
+    content.className = '';
+    content.innerHTML = `
+      <section class="progress-panel${complete ? ' is-complete' : ''}">
+        <div class="progress-top">
+          <p class="progress-label">Collection</p>
+          <div class="progress-figure">
+            <span class="value">${pct}<small>%</small></span>
+            <span class="caption">${nf.format(caughtNonUnique)} of ${nf.format(totalNonUnique)} catalogued</span>
+          </div>
+          <span class="progress-seal">${icon('check-ring')} Index complete</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </section>
+      <div class="tiers">${tiersHtml}</div>`;
+
+    // Grow the meter from zero on the next frame so the transition runs.
+    const fillEl = content.querySelector('.progress-fill');
+    if (fillEl) {
+      fillEl.style.width = '0%';
+      requestAnimationFrame(() => requestAnimationFrame(() => { fillEl.style.width = pct + '%'; }));
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

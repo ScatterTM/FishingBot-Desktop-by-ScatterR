@@ -1,0 +1,115 @@
+/* =====================================================================
+   Vibe polish layer (v2.6.23)
+
+   Loaded last on the homepage (html/index.html) and on the game page
+   (via api/site.js). It adds:
+   - a spacing scale (4 / 8 / 16 / 24 / 32) as tokens for new rules
+   - shadow tokens used only for control hover and press elevation
+   - a hover lift (scale 1.02) on primary and secondary buttons
+   - press feedback, one motion timing, and a reduced-motion guard
+   Colour, radius and layout stay as they are.
+   ===================================================================== */
+
+:root {
+  /* Spacing scale: the only gaps new rules should use. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+
+  /* Motion */
+  --dur-fast: 130ms;   /* hover, focus, press */
+  --dur-base: 200ms;   /* overlays that enter or leave */
+
+  /* Elevation: used on control hover and press only. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------------------------------------------------------------------
+   1. One transition set for every control.
+   Only colour, border, outline, opacity, shadow and transform animate.
+   Layout properties never animate.
+   --------------------------------------------------------------------- */
+button,
+[role="button"],
+a.btn,
+.btn,
+.tab-btn,
+.sub-tab-btn,
+.refresh-btn,
+.dex-toolbar-btn {
+  transition-property: color, background-color, border-color, outline-color, opacity, transform, box-shadow;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/* ---------------------------------------------------------------------
+   2. Hover lift on primary and secondary buttons.
+   Scale 1.02 and a medium shadow on hover. Tabs and rows keep their
+   plain hover, so the nav does not wobble.
+   --------------------------------------------------------------------- */
+.btn:not(:disabled):hover,
+.btn.solid:not(:disabled):hover,
+.dex-toolbar-btn:not(:disabled):hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------------------------------------------------------------------
+   3. Press feedback.
+   A pressed control drops 1px and loses the lift, so the click reads.
+   --------------------------------------------------------------------- */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+a.btn:active,
+.btn:not(:disabled):active,
+.tab-btn:active,
+.sub-tab-btn:active,
+.dex-toolbar-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------------------------------------------------------------------
+   4. Disabled controls.
+   No lift, no shadow, not-allowed cursor.
+   --------------------------------------------------------------------- */
+button:disabled,
+.btn:disabled,
+.dex-toolbar-btn:disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------------------------
+   5. Reduced motion.
+   Keep the colour, outline and shadow changes (they carry state).
+   Remove the lift, the scale and the press movement.
+   --------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  button,
+  [role="button"],
+  a.btn,
+  .btn,
+  .tab-btn,
+  .sub-tab-btn,
+  .refresh-btn,
+  .dex-toolbar-btn {
+    transition-property: color, background-color, border-color, outline-color, opacity, box-shadow;
+  }
+  .btn:not(:disabled):hover,
+  .btn.solid:not(:disabled):hover,
+  .dex-toolbar-btn:not(:disabled):hover,
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active,
+  a.btn:active,
+  .btn:not(:disabled):active,
+  .tab-btn:active,
+  .sub-tab-btn:active,
+  .dex-toolbar-btn:not(:disabled):active {
+    transform: none;
+  }
+}

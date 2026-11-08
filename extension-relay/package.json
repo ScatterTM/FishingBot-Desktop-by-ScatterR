@@ -1,0 +1,18 @@
+{
+  "name": "fishingbot-extension-relay",
+  "version": "1.0.0-beta",
+  "private": true,
+  "type": "module",
+  "description": "Fishingbot Twitch Extension Backend Service relay",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "prestart": "node --check server.js",
+    "start": "node server.js",
+    "check": "node --check server.js && node --check viewer-identity.js && node --check snapshot-gate.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
