@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please do not open a public issue for a security problem. Email the maintainer instead: [security contact email]. Include what you found, the steps to reproduce it and the version (Fishingbot 1.0.0 Beta).
+Please do not open a public issue for a security problem. Email the maintainer instead: fishingsyshub@gmail.com. Include what you found, the steps to reproduce it and the version (Fishingbot 1.0.0 Beta).
 
 ## Secrets and private data
 
