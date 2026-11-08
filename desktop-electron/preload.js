@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('fishingbot', {
   onOnline: subscribe('server:online'),
   onWebOpen: subscribe('web:open'),
   onWindowsLocked: subscribe('windows:locked'),
+  onUpdateStatus: subscribe('update:status'),
   webAssets: () => ipcRenderer.invoke('web:assets'),
   appearanceAvatar: () => ipcRenderer.invoke('appearance:avatar'),
   uploadAvatar: () => ipcRenderer.invoke('appearance:uploadAvatar'),

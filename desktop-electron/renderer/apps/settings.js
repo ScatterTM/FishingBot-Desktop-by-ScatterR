@@ -110,6 +110,8 @@
       case 'ignored': return `Update ${result.latest} is ignored.`;
       case 'deferred': return `Update ${result.latest} is available. Reminding you tomorrow.`;
       case 'busy': return 'An update check is already running.';
+      case 'checking': return 'Checking for updates…';
+      case 'error': return `Update failed: ${result.error || 'unknown error'}`;
       default: return 'Done.';
     }
   }

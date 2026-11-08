@@ -285,52 +285,83 @@ function saveSection(section, values, server) {
   return applySettings(section, server);
 }
 
+// Reports an update step to the desktop (a toast, and the Settings line) without blocking the check.
+function reportUpdate(state, extra = {}) {
+  send('update:status', { state, ...extra });
+}
+
 async function checkForUpdates({ boot }, server) {
   if (updating) return { status: 'busy' };
   updating = true;
   try {
-    const view = settings.view(ROOT);
-    const info = await updates.findRelease(view.updates.repository, app.getVersion());
-    if (info.upToDate) {
-      server.addLog('UPDATE', `Fishingbot Desktop ${app.getVersion()} is up to date.`, 'info');
-      return { status: 'upToDate', latest: info.latest };
-    }
-    if (boot) {
-      if (view.updates.ignoredVersion === info.latest) return { status: 'ignored', latest: info.latest };
-      if (view.updates.remindAfter && new Date(view.updates.remindAfter) > new Date()) {
-        return { status: 'deferred', latest: info.latest };
-      }
-    }
-    server.addLog('UPDATE', `Update ${info.latest} is available.`, 'ok');
-
-    const { response } = await dialog.showMessageBox({
-      type: 'info',
-      title: 'Fishingbot Desktop Updates',
-      message: tr('Fishingbot Desktop {latest} is available. You have {current}.', { latest: info.latest, current: info.current }),
-      detail: `${(info.notes || '').slice(0, 600)}\n\nThe installer is checked against its published SHA-256 checksum before it starts.`,
-      buttons: [tr('Update now'), tr('Remind me tomorrow'), tr('Ignore this version')],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true,
-    });
-    if (response === 2) {
-      settings.write(ROOT, { updates: { ignoredVersion: info.latest, remindAfter: null } });
-      server.addLog('UPDATE', `Update ${info.latest} ignored. A newer release will still be offered.`, 'info');
-      return { status: 'ignored', latest: info.latest };
-    }
-    if (response === 1) {
-      settings.write(ROOT, { updates: { remindAfter: new Date(Date.now() + 86400000).toISOString() } });
-      return { status: 'deferred', latest: info.latest };
-    }
-
-    const file = await updates.downloadVerified(info);
-    server.addLog('UPDATE', `Installer verified (${info.installer.name}). Closing to install.`, 'ok');
-    updates.launchInstallerAfterExit(file);
-    setImmediate(() => app.quit());
-    return { status: 'installing', latest: info.latest };
+    return await runUpdateCheck({ boot }, server);
+  } catch (err) {
+    const message = err.message || String(err);
+    server.addLog('UPDATE', `Update failed: ${message}`, 'warn');
+    // The boot check stays quiet unless it fails while the window is open; a check the user started always answers.
+    if (!boot) reportUpdate('error', { message });
+    return { status: 'error', error: message };
   } finally {
     updating = false;
   }
+}
+
+async function runUpdateCheck({ boot }, server) {
+  const view = settings.view(ROOT);
+  if (!boot) reportUpdate('checking');
+  const info = await updates.findRelease(view.updates.repository, app.getVersion());
+  if (info.upToDate) {
+    server.addLog('UPDATE', `Fishingbot Desktop ${app.getVersion()} is up to date.`, 'info');
+    if (!boot) reportUpdate('upToDate', { current: info.current });
+    return { status: 'upToDate', latest: info.latest };
+  }
+  if (boot) {
+    if (view.updates.ignoredVersion === info.latest) return { status: 'ignored', latest: info.latest };
+    if (view.updates.remindAfter && new Date(view.updates.remindAfter) > new Date()) {
+      return { status: 'deferred', latest: info.latest };
+    }
+  }
+  server.addLog('UPDATE', `Update ${info.latest} is available.`, 'ok');
+
+  const { response } = await dialog.showMessageBox({
+    type: 'info',
+    title: 'Fishingbot Desktop Updates',
+    message: tr('Fishingbot Desktop {latest} is available. You have {current}.', { latest: info.latest, current: info.current }),
+    detail: `${(info.notes || '').slice(0, 600)}\n\nThe installer is checked against its published SHA-256 checksum before it starts.`,
+    buttons: [tr('Update now'), tr('Remind me tomorrow'), tr('Ignore this version')],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (response === 2) {
+    settings.write(ROOT, { updates: { ignoredVersion: info.latest, remindAfter: null } });
+    server.addLog('UPDATE', `Update ${info.latest} ignored. A newer release will still be offered.`, 'info');
+    return { status: 'ignored', latest: info.latest };
+  }
+  if (response === 1) {
+    settings.write(ROOT, { updates: { remindAfter: new Date(Date.now() + 86400000).toISOString() } });
+    return { status: 'deferred', latest: info.latest };
+  }
+
+  // Download with progress. Reports at most every 300 ms, or when the whole percentage changes.
+  reportUpdate('downloading', { latest: info.latest, percent: 0, received: 0, total: 0 });
+  server.addLog('UPDATE', `Downloading ${info.installer.name}.`, 'info');
+  let lastPercent = -1;
+  let lastSent = 0;
+  const file = await updates.downloadVerified(info, (received, total) => {
+    const percent = total ? Math.floor((received / total) * 100) : null;
+    const now = Date.now();
+    if (percent === lastPercent && now - lastSent < 300) return;
+    lastPercent = percent;
+    lastSent = now;
+    reportUpdate('downloading', { latest: info.latest, percent, received, total });
+  });
+  reportUpdate('verifying', { latest: info.latest });
+  server.addLog('UPDATE', `Installer verified (${info.installer.name}). Closing to install.`, 'ok');
+  reportUpdate('installing', { latest: info.latest });
+  updates.launchInstallerAfterExit(file);
+  setImmediate(() => app.quit());
+  return { status: 'installing', latest: info.latest };
 }
 
 // Translates a message for the language chosen in Settings. Falls back to English.

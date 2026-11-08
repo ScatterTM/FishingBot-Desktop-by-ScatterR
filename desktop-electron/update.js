@@ -30,10 +30,24 @@ function extractHex(text) {
   return match ? match[1].toLowerCase() : null;
 }
 
-async function fetchBytes(url) {
+// onProgress(received, total) is called as the bytes arrive; total is 0 when the server does not say.
+async function fetchBytes(url, onProgress) {
   const res = await fetch(url, { headers: HEADERS, redirect: 'follow', signal: AbortSignal.timeout(300000) });
   if (!res.ok) throw new Error(`Download failed (HTTP ${res.status}).`);
-  return Buffer.from(await res.arrayBuffer());
+  if (!onProgress || !res.body) return Buffer.from(await res.arrayBuffer());
+  const total = Number(res.headers.get('content-length')) || 0;
+  const reader = res.body.getReader();
+  const chunks = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = Buffer.from(value);
+    chunks.push(chunk);
+    received += chunk.length;
+    onProgress(received, total);
+  }
+  return Buffer.concat(chunks);
 }
 
 async function findRelease(repository, currentVersion) {
@@ -79,8 +93,8 @@ async function findRelease(repository, currentVersion) {
 }
 
 // Downloads the installer and returns its path only if the checksum matches.
-async function downloadVerified(info) {
-  const bytes = await fetchBytes(info.installer.url);
+async function downloadVerified(info, onProgress) {
+  const bytes = await fetchBytes(info.installer.url, onProgress);
   const actual = crypto.createHash('sha256').update(bytes).digest('hex');
   if (actual !== info.installer.sha256) {
     throw new Error('The downloaded installer did not match the published SHA-256 checksum. It was not started.');

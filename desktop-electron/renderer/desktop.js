@@ -1684,6 +1684,25 @@
     if (security.lockOnWindowsLock) lockNow();
   });
 
+  // Update steps (see checkForUpdates in main.js): one toast line, replaced as the update moves on.
+  function updateText(s) {
+    switch (s.state) {
+      case 'checking': return t('Checking for updates…');
+      case 'upToDate': return t('Fishingbot Desktop {v} is up to date.', { v: s.current });
+      case 'downloading': return s.percent == null
+        ? t('Downloading Fishingbot {v}…', { v: s.latest })
+        : t('Downloading Fishingbot {v}… {p}%', { v: s.latest, p: s.percent });
+      case 'verifying': return t('Checking the installer…');
+      case 'installing': return t('Closing to install {v}. The installer opens next.', { v: s.latest });
+      case 'error': return t('Update failed: {m}', { m: s.message });
+      default: return '';
+    }
+  }
+  api.onUpdateStatus((status) => {
+    const text = updateText(status || {});
+    if (text) toast(text, status.state === 'error' ? 'bad' : 'info');
+  });
+
   function reloadWeb() {
     for (const rec of windows.values()) {
       if (rec.body._webview) reloadView(rec.body);
