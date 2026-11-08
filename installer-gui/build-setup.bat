@@ -1,9 +1,15 @@
 @echo off
-rem Builds installer-gui\Output\Fishingbot_Setup_v1.0.0-beta.exe from dist\ (run build.bat first).
+rem Builds installer-gui\Output\%INSTALLER_NAME% from dist\ (run build.bat first).
 rem If FISHINGBOT_SIGN_CERT_SHA1 is set, signs the final installer after compilation.
 rem Uses the C# compiler that comes with Windows (.NET Framework 4.6.2+).
 setlocal
 cd /d "%~dp0"
+
+rem Stamp the version from VERSION into the app files and the installer sources.
+node "%~dp0..\scripts\stamp-version.cjs" || (echo Could not stamp the version from VERSION. & if not defined FISHINGBOT_NO_PAUSE pause & exit /b 1)
+for /f "delims=" %%N in ('node "%~dp0..\scripts\stamp-version.cjs" --installer-name') do set "INSTALLER_NAME=%%N"
+if not defined INSTALLER_NAME (echo Could not read the installer name from VERSION. & exit /b 1)
+
 
 if exist "..\scripts\remove-tailscale-sharing.ps1" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "..\scripts\remove-tailscale-sharing.ps1" -ProjectRoot "%~dp0.."
@@ -59,7 +65,7 @@ if errorlevel 1 (
 
 echo [2/4] Compiling the setup program...
 if not exist Output mkdir Output
-"%CSC%" /nologo /target:winexe /optimize+ /platform:x64 /win32icon:"..\desktop-electron\renderer\assets\app.ico" /out:"Output\Fishingbot_Setup_v1.0.0-beta.exe" /resource:payload.zip,Payload.zip /resource:..\desktop-electron\renderer\assets\app.ico,AppIcon.ico /resource:..\desktop-electron\renderer\assets\app.png,AppMark.png /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Web.Extensions.dll ..\desktop\src\Loc.cs FishingbotSetup.cs
+"%CSC%" /nologo /target:winexe /optimize+ /platform:x64 /win32icon:"..\desktop-electron\renderer\assets\app.ico" /out:"Output\%INSTALLER_NAME%" /resource:payload.zip,Payload.zip /resource:..\desktop-electron\renderer\assets\app.ico,AppIcon.ico /resource:..\desktop-electron\renderer\assets\app.png,AppMark.png /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Web.Extensions.dll ..\desktop\src\Loc.cs FishingbotSetup.cs ReleaseInfo.g.cs
 if errorlevel 1 (
   echo Compile failed. See the messages above.
   if not defined FISHINGBOT_NO_PAUSE pause
@@ -68,7 +74,7 @@ if errorlevel 1 (
 
 echo [3/4] Signing/verifying final executables...
 if defined FISHINGBOT_SIGN_CERT_SHA1 (
-  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\sign-release.ps1" -TargetDirectory "%~dp0..\dist" -Files "%~dp0Output\Fishingbot_Setup_v1.0.0-beta.exe" -CertThumbprint "%FISHINGBOT_SIGN_CERT_SHA1%"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\sign-release.ps1" -TargetDirectory "%~dp0..\dist" -Files "%~dp0Output\%INSTALLER_NAME%" -CertThumbprint "%FISHINGBOT_SIGN_CERT_SHA1%"
   if errorlevel 1 (
     echo Signing failed. The installer is not ready for release.
     if not defined FISHINGBOT_NO_PAUSE pause
@@ -84,6 +90,6 @@ rmdir /s /q staging
 del /q payload.zip
 
 echo.
-echo Setup built: installer-gui\Output\Fishingbot_Setup_v1.0.0-beta.exe
+echo Setup built: installer-gui\Output\%INSTALLER_NAME%
 if not defined FISHINGBOT_NO_PAUSE pause
 exit /b 0

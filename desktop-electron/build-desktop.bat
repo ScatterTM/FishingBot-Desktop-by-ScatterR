@@ -10,6 +10,7 @@ set "DIST=%ROOT%\dist"
 
 where node >nul 2>nul || (echo Node.js 22 or newer is required to build the desktop app. & goto :fail)
 
+node "%ROOT%\scripts\stamp-version.cjs" || (echo Could not stamp the version from VERSION. & goto :fail)
 echo [1/3] Installing desktop app dependencies...
 call npm install || goto :fail
 

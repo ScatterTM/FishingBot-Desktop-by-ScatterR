@@ -1,7 +1,7 @@
 {
   "name": "fishingbot",
-  "version": "1.0.0-beta",
-  "description": "Fishingbot v1.0.0 Beta - local-first Twitch fishing game with a unified control hub and map-first Twitch Extension.",
+  "version": "1.0.4-beta",
+  "description": "Fishingbot v1.0.4 Beta - local-first Twitch fishing game with a unified control hub and map-first Twitch Extension.",
   "dependencies": {
     "mathjs": "^12.4.0"
   },

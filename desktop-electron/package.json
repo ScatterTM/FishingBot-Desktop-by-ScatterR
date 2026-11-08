@@ -1,6 +1,6 @@
 {
   "name": "fishingbot-desktop",
-  "version": "1.0.0-beta",
+  "version": "1.0.4-beta",
   "private": true,
   "description": "Fishingbot Desktop (Electron shell) for Fishingbot: a widget hub plus one window per Control Centre tab.",
   "main": "main.js",

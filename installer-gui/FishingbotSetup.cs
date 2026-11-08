@@ -33,9 +33,10 @@ namespace FishingbotSetup
     internal static class Product
     {
         public const string Name = "Fishingbot";
-        public const string Version = "1.0.0";
-        // Shown in Windows Apps & features. Version above stays numeric so System.Version can compare it.
-        public const string DisplayVersion = "1.0.0 Beta";
+        // From the VERSION file (see ReleaseInfo.g.cs). Version stays numeric so System.Version can compare it.
+        public const string Version = ReleaseInfo.Number;
+        // Shown in Windows Apps & features.
+        public const string DisplayVersion = ReleaseInfo.Label;
         public const string ExeName = "Fishingbot.exe";
         public const string UninstallExeName = "Uninstall Fishingbot.exe";
         public const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Fishingbot";
