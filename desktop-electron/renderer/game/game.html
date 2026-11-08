@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- Only local files. Inline style attributes are used by the Control Centre markup. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>Game settings (offline)</title>
+  <link rel="stylesheet" href="../loot/control-centre.css">
+</head>
+<body>
+  <div id="app">
+    <div class="main">
+      <header class="top">
+        <div class="top-text">
+          <div class="title" id="page-title">Game settings</div>
+          <div class="small">The server is stopped. Saving queues the change; it is applied on the next start.</div>
+        </div>
+      </header>
+      <p class="small" id="notice" role="status"></p>
+      <section id="view" class="bento"><div class="fb-skel" role="status" aria-label="Loading"><span></span><span></span><span></span></div></section>
+    </div>
+  </div>
+  <script src="game-host.js"></script>
+</body>
+</html>

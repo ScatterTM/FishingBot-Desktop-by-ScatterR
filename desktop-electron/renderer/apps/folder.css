@@ -1,0 +1,179 @@
+/* Folder app (renderer/apps/folder.js). Viewers on the left, entries grouped by viewer on the right,
+   one entry open at a time in the same pane. Colours and radii come from desktop.css. */
+.fd { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; background: transparent; color: var(--ink); font-size: calc(13px * var(--text-scale, 1)); }
+.fd [hidden] { display: none !important; }
+.fd button, .fd input, .fd select, .fd textarea { font: inherit; }
+.fd :focus-visible { outline: 2px solid rgb(var(--accent-rgb) / 0.7); outline-offset: 1px; }
+.fd-muted { color: var(--muted); margin: 0; }
+.fd-path { font-family: Consolas, ui-monospace, monospace; font-size: 12px; overflow-wrap: anywhere; }
+.fd-mono, .fd-size { font-family: Consolas, ui-monospace, monospace; }
+
+.fd-banner { padding: 8px 14px; border-bottom: 1px solid var(--line); background: rgb(var(--accent-rgb) / 0.08); color: var(--muted); font-size: 12px; }
+
+/* Toolbar: one search field that looks through every key and value. */
+.fd-toolbar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.fd-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; max-width: 560px; padding: 0 8px 0 11px; height: 36px;
+  background: var(--glass-control); border: 1px solid var(--glass-line); border-radius: var(--r-md); color: var(--muted); transition: border-color 120ms; }
+.fd-search:focus-within, .fd-search:hover { border-color: rgb(var(--accent-rgb) / 0.45); }
+.fd-search-icon { display: inline-flex; flex: none; }
+.fd-search-input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; color: var(--ink); padding: 0; }
+.fd-search-input:focus { outline: none; }
+.fd-search-input::placeholder { color: var(--muted); opacity: 0.8; }
+.fd-search-input::-webkit-search-cancel-button { display: none; }
+.fd-clear { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
+.fd-clear:hover { color: var(--ink); background: rgba(255, 255, 255, 0.07); }
+.fd-toolbar-meta { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
+.fd-hint { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.fd-status { font-size: 12px; color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-status.ok { color: var(--ok); }
+.fd-status.bad { color: var(--red); }
+
+.fd-filters { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 8px 14px; border-bottom: 1px solid var(--glass-line); }
+.fd-ctl { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.fd-ctl-label { white-space: nowrap; }
+.fd-ctl .fd-select { height: 28px; }
+.fd-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--fd-side, 230px) 9px minmax(0, 1fr); }
+
+/* Work area: listings on the left, editor on the right, a divider between them. */
+.fd-work { min-width: 0; min-height: 0; display: flex; }
+.fd-listcol { flex: 1 1 0; min-width: 280px; min-height: 0; display: flex; flex-direction: column; }
+.fd-editorcol { flex: 0 0 46%; min-width: 300px; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--glass-line); }
+.fd-handle { position: relative; flex: 0 0 9px; cursor: col-resize; touch-action: none; user-select: none; }
+.fd-handle::before { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 1px; background: var(--glass-line); transition: background-color 120ms, width 120ms; }
+.fd-handle:hover::before, .fd-handle:focus-visible::before, .fd-handle:active::before { width: 3px; left: 3px; background: rgb(var(--accent-rgb) / 0.7); }
+.fd-handle:focus-visible { outline: none; }
+.fd-listcol .fd-toolbar { border-top: 0; }
+
+
+/* Viewers */
+.fd-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--glass-line); background: rgba(255, 255, 255, 0.015); }
+.fd-side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 12px 6px 14px; }
+.fd-side-title { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.fd-select { min-width: 0; height: 28px; padding: 0 6px; background: var(--glass-control); color: var(--ink); border: 1px solid var(--glass-line); border-radius: var(--radius-sm); font-size: 12px; }
+.fd-viewer-list { flex: 1; min-height: 0; overflow: auto; padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 2px; }
+.fd-viewer { display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 8px; background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink); text-align: left; cursor: pointer; }
+.fd-viewer:hover { background: rgba(255, 255, 255, 0.05); }
+.fd-viewer.on { background: rgb(var(--accent-rgb) / 0.14); color: var(--ink); }
+.fd-viewer.on .fd-avatar { background: var(--orange2); color: #101214; }
+.fd-viewer.shared { color: var(--muted); }
+.fd-avatar { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--panel2); border: 1px solid var(--glass-line); font-size: 11px; font-weight: 600; }
+.fd-viewer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-count { flex: none; min-width: 22px; padding: 1px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+.fd-add { display: flex; gap: 6px; padding: 8px 10px 12px; border-top: 1px solid var(--glass-line); }
+.fd-add input { flex: 1; min-width: 0; padding: 6px 8px; background: var(--glass-control); color: var(--ink); border: 1px solid var(--glass-line); border-radius: var(--radius-sm); }
+.fd-add .btn { padding: 5px 10px; font-size: 12px; }
+
+/* Main pane: list or editor */
+.fd-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.fd-list-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.fd-main-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px 10px; border-bottom: 1px solid var(--glass-line); }
+.fd-main-title { flex: 1; min-width: 0; }
+.fd-main-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fd-title { margin: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.fd-key-title { font-family: Consolas, ui-monospace, monospace; font-size: 14px; }
+.fd-sub { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.fd-seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--glass-control); border: 1px solid var(--glass-line); border-radius: var(--r-md); }
+.fd-seg-btn { padding: 4px 10px; background: transparent; border: 0; border-radius: 7px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.fd-seg-btn:hover { color: var(--ink); }
+.fd-seg-btn[aria-pressed="true"] { background: var(--panel2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--glass-line); }
+
+.fd-list { flex: 1; min-height: 0; overflow: auto; padding: 6px 10px 14px; }
+/* Not sticky: a sticky header with a fill either stays solid (ignores the Glass setting) or lets the rows show through
+   it (the overlap). Plain and transparent, it follows Settings > Appearance like the rest of the panel. */
+.fd-group-head { display: flex; align-items: center; gap: 8px; padding: 10px 8px 6px; margin-top: 4px; background: transparent; border-bottom: 1px solid var(--glass-line); }
+.fd-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--orange2); }
+.fd-group-head.shared .fd-group-name { color: var(--muted); }
+.fd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 10px 8px 12px; margin-bottom: 2px; background: none; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--ink); text-align: left; cursor: pointer; }
+.fd-row:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--glass-line); }
+.fd-row.on { background: rgb(var(--accent-rgb) / 0.12); border-color: rgb(var(--accent-rgb) / 0.35); }
+.fd-row.expired .fd-key { color: var(--muted); text-decoration: line-through; }
+.fd-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fd-key { font-family: Consolas, ui-monospace, monospace; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-snippet { color: var(--muted); font-size: 12px; font-family: Consolas, ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-snippet mark, .fd-key mark { background: rgb(var(--accent-rgb) / 0.28); color: var(--ink); border-radius: 3px; padding: 0 1px; }
+.fd-row-badges { flex: none; display: flex; align-items: center; gap: 6px; }
+.fd-badge { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--glass-line); color: var(--muted); font-size: 11px; white-space: nowrap; }
+.fd-badge.list { color: var(--ink); }
+.fd-badge.hit { color: var(--orange2); border-color: rgb(var(--accent-rgb) / 0.35); }
+.fd-badge.bad { color: var(--red); border-color: rgb(var(--accent-rgb) / 0.0); background: rgba(221, 112, 95, 0.12); }
+.fd-size { color: var(--muted); font-size: 11px; }
+
+.fd-empty { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; padding: 36px 12px; }
+.fd-empty strong { font-weight: 600; }
+
+/* Editor */
+.fd-editor-head { align-items: center; }
+.fd-editor-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px 16px; }
+.fd-editor-body > .fd-group:first-child > legend { display: none; }
+.fd-group { margin: 0 0 10px; padding: 8px 10px 10px; border: 1px solid var(--glass-line); border-radius: var(--r-md); }
+.fd-group > legend { padding: 0 6px; color: var(--muted); font-size: 12px; }
+.fd-field { display: grid; grid-template-columns: minmax(110px, 30%) minmax(0, 1fr); gap: 8px; align-items: start; padding: 4px 0 4px 8px; border-left: 3px solid transparent; }
+.fd-field.dirty { border-left-color: var(--orange2); background: rgb(var(--accent-rgb) / 0.07); }
+.fd-field-key { padding-top: 7px; color: var(--muted); overflow-wrap: anywhere; font-family: Consolas, ui-monospace, monospace; font-size: 12px; }
+.fd-field input:not([type="checkbox"]), .fd-field textarea, .fd-text { width: 100%; box-sizing: border-box; padding: 6px 8px; background: var(--glass-text); color: var(--ink); border: 1px solid var(--glass-line); border-radius: var(--radius-sm); font-family: Consolas, ui-monospace, monospace; font-size: 13px; }
+.fd-field input:focus, .fd-field textarea:focus, .fd-text:focus { outline: none; border-color: rgb(var(--accent-rgb) / 0.6); }
+.fd-field input[type="checkbox"] { justify-self: start; margin-top: 8px; accent-color: var(--orange2); }
+.fd-field input.invalid { border-color: var(--red); }
+.fd-text { min-height: 300px; resize: vertical; }
+.fd-add-item, .fd-remove { font-size: 12px; margin-top: 4px; }
+.fd-remove { margin-left: 6px; }
+.fd-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--glass-line); }
+.fd-summary { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; }
+
+/* Dialogs */
+.fd-overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgb(0 0 0 / 0.45); }
+.fd-dialog { display: flex; flex-direction: column; gap: 10px; width: min(540px, 92%); max-height: 80%; padding: 18px; background: var(--panel); border: 1px solid var(--line2); border-radius: var(--radius); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
+.fd-dialog h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.fd-dialog p { margin: 0; }
+.fd-confirm { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.fd-diff { min-height: 0; max-height: 260px; overflow: auto; padding: 6px 8px; border: 1px solid var(--glass-line); border-radius: var(--radius-sm); font-family: Consolas, ui-monospace, monospace; font-size: 12px; }
+.fd-diff div { padding: 2px 0; overflow-wrap: anywhere; }
+.fd-diff .added { color: var(--ok); }
+.fd-diff .removed { color: var(--red); }
+.fd-diff .changed { color: var(--ink); }
+.fd-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+/* Skeleton loaders: shown while the list, a search or an entry is loading. */
+.fd-skel-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 4px; }
+.fd-skel-row.viewer { padding: 6px 8px; }
+.fd-skel-row.row { border: 1px solid transparent; }
+.fd-skel-row.field { display: grid; grid-template-columns: 30% 1fr; padding: 8px 8px; }
+.fd-skel { display: block; height: 11px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.13) 50%, rgba(255,255,255,0.05) 100%); background-size: 200% 100%; animation: fd-shimmer 1.3s ease-in-out infinite; }
+.fd-skel-row.viewer .fd-skel-a { width: 60% !important; }
+.fd-skel-row.row .fd-skel-a { height: 13px; width: 48%; }
+.fd-skel-row.row .fd-skel-b { height: 9px; width: 22%; margin-left: auto; }
+.fd-skel-row.field .fd-skel { height: 32px; }
+.fd-skel-row.viewer .fd-skel-b { width: 22px; height: 16px; border-radius: 999px; flex: none; }
+@keyframes fd-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .fd-skel { animation: none; background: rgba(255, 255, 255, 0.09); }
+  .fd-search { transition: none; }
+}
+
+/* Narrow windows: viewers stack above the work area; the editor replaces the listings while open. */
+@media (max-width: 640px) {
+  .fd-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .fd-side { border-right: 0; border-bottom: 1px solid var(--glass-line); }
+  .fd-viewer-list { flex: none; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 6px 8px 8px; }
+  .fd-viewer { flex: none; width: auto; }
+  .fd-viewer-name { max-width: 140px; }
+  .fd-work { flex-direction: column; }
+  .fd-listcol { min-width: 0; }
+  .fd-work[data-view="split"] .fd-listcol { display: none; }
+  .fd-editorcol { flex: 1 1 auto !important; min-width: 0; border-left: 0; }
+  .fd-handle { display: none; }
+  .fd-handle-side { display: none; }
+  .fd-toolbar { flex-wrap: wrap; }
+  .fd-toolbar-meta { width: 100%; align-items: flex-start; text-align: left; }
+  .fd-field { grid-template-columns: 1fr; }
+  .fd-field-key { padding-top: 0; }
+}
+
+/* While a divider moves or the window is resized by its corner: the entries are taken out of layout (display: none,
+   not visibility), so a width change does not re-wrap every row on each frame. They come back on release.
+   The blur itself stays on. */
+.window.live-change .fd-viewer-list, .window.live-change .fd-list, .window.live-change .fd-editor-body { display: none; }
+
+/* While a divider moves: the cursor stays a resize cursor, and the panes ignore the pointer (less work per move). */
+.fd-dragging, .fd-dragging * { cursor: col-resize !important; user-select: none !important; }
+.fd-dragging .fd-listcol, .fd-dragging .fd-editorcol, .fd-dragging .fd-side { pointer-events: none; }

@@ -1,0 +1,54 @@
+{
+  "name": "fishingbot-desktop",
+  "version": "1.0.0-beta",
+  "private": true,
+  "description": "Fishingbot Desktop (Electron shell) for Fishingbot: a widget hub plus one window per Control Centre tab.",
+  "main": "main.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win dir --x64 --publish never",
+    "check": "node --check main.js && node --check server-manager.js && node --check preload.js && node --check tabs.js && node --check queue.js && node --check sync-shared.js && node --check set-icon.js && node --check game-settings.js && node --check twitch-config.js && node --check settings.js && node --check appearance.js && node --check renderer/appearance.js && node --check renderer/desktop.js && node --check admin.js && node --check update.js && node --check renderer/apps/settings.js && node --check renderer/apps/log.js && node --check db-manager.js && node --check renderer/apps/folder.js && node --check renderer/desktop.js",
+    "prestart": "node sync-shared.js",
+    "predist": "node sync-shared.js"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "rcedit": "^4.0.1"
+  },
+  "build": {
+    "appId": "com.fishingbot.desktop",
+    "productName": "Fishingbot Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "*.js",
+      "package.json",
+      "renderer/**/*",
+      "i18n/**/*"
+    ],
+    "win": {
+      "executableName": "Fishingbot",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "renderer/assets/app.ico"
+    },
+    "extraResources": [
+      {
+        "from": "renderer/assets/app.ico",
+        "to": "app.ico"
+      }
+    ]
+  }
+}
