@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data: https://media.giphy.com; frame-src http: https:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fishingbot Desktop</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="desktop.css">
+  <link rel="stylesheet" href="apps/folder.css">
+  <link rel="stylesheet" href="dropdown.css">
+</head>
+<body>
+  <div class="wallpaper" id="wallpaper" aria-hidden="true"></div>
+  <header class="os-bar">
+    <img class="os-mark" src="assets/logo.svg" alt="">
+    <span class="os-name">Fishingbot Desktop</span>
+  </header>
+
+  <main class="desktop" id="desktop">
+    <button class="edit-done" id="edit-done" type="button" hidden>Done editing</button>
+    <div class="icons" id="icons" aria-label="Apps"></div>
+
+    <aside class="widgets" aria-label="Widgets">
+      <section class="widget widget-clock clock-plain clock-align-centre" data-widget="clock" data-cols="4" data-rows="2" data-anchor="centre" aria-label="Time and date">
+        <div class="clock-inner">
+          <div class="clock-time" id="clock-time">--:--</div>
+          <div class="clock-date" id="clock-date"></div>
+        </div>
+        <span class="w-grip" aria-hidden="true"></span>
+      </section>
+
+      <section class="widget" data-widget="srv" data-cols="4" data-rows="4" data-base-h="255" aria-labelledby="h-srv">
+        <header class="w-head">
+          <h2 id="h-srv">Local server</h2>
+          <span class="dot" id="srv-dot" aria-hidden="true"></span>
+        </header>
+        <p class="w-value" id="srv-state">Starting</p>
+        <dl class="kv">
+          <dt>Port</dt><dd id="srv-port">—</dd>
+          <dt>Process</dt><dd id="srv-pid">—</dd>
+          <dt>Uptime</dt><dd id="srv-uptime">—</dd>
+        </dl>
+        <p class="w-error" id="srv-error" role="status"></p>
+        <div class="w-actions">
+          <button class="btn solid" id="srv-start" type="button" disabled>Start</button>
+          <button class="btn" id="srv-restart" type="button" disabled>Restart</button>
+          <button class="btn ghost" id="srv-stop" type="button" disabled>Stop</button>
+        </div>
+        <span class="w-grip" aria-hidden="true"></span>
+      </section>
+
+      <section class="widget" data-widget="tw" data-cols="4" data-rows="2" data-base-h="187" aria-labelledby="h-tw">
+        <header class="w-head">
+          <h2 id="h-tw">Twitch bot</h2>
+          <span class="dot" id="tw-dot" aria-hidden="true"></span>
+        </header>
+        <p class="w-value" id="tw-state">Waiting for the server</p>
+        <p class="w-error" id="tw-error" role="status"></p>
+        <div class="w-actions">
+          <button class="btn" id="tw-reconnect" type="button" disabled>Reconnect Twitch</button>
+        </div>
+        <span class="w-grip" aria-hidden="true"></span>
+      </section>
+
+      <section class="widget" data-widget="log" data-cols="4" data-rows="4" data-base-h="255" aria-labelledby="h-log">
+        <header class="w-head">
+          <h2 id="h-log">Live log</h2>
+          <button class="btn ghost small" id="log-open" type="button">Open</button>
+        </header>
+        <div class="log-preview" id="hub-log" role="log" aria-live="off"></div>
+        <span class="w-grip" aria-hidden="true"></span>
+      </section>
+      <section class="widget" data-widget="sys" data-cols="4" data-rows="4" data-base-h="238" aria-labelledby="h-sys">
+        <header class="w-head">
+          <h2 id="h-sys">System usage</h2>
+        </header>
+        <dl class="kv">
+          <dt>Bot CPU</dt><dd id="sys-bot-cpu">—</dd>
+          <dt>Bot memory</dt><dd id="sys-bot-ram">—</dd>
+          <dt>PC CPU</dt><dd id="sys-cpu">—</dd>
+          <dt>PC memory</dt><dd id="sys-ram">—</dd>
+        </dl>
+        <div class="sys-bars" aria-hidden="true">
+          <div class="sys-bar"><span id="sys-cpu-bar"></span></div>
+          <div class="sys-bar"><span id="sys-ram-bar"></span></div>
+        </div>
+        <span class="w-grip" aria-hidden="true"></span>
+      </section>
+    </aside>
+
+    <div class="windows" id="windows"><div class="snap-preview" id="snap-preview" aria-hidden="true"></div></div>
+    <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  </main>
+
+  <section class="lock" id="lock" aria-labelledby="lock-title" hidden>
+    <div class="lock-time" id="lock-time">--:--</div>
+    <div class="lock-date" id="lock-date"></div>
+    <p class="lock-greeting" id="lock-greeting" hidden></p>
+    <div class="lock-card">
+      <div class="lock-avatar" id="lock-avatar" aria-hidden="true">F</div>
+      <p class="lock-kicker">Fishingbot Desktop</p>
+      <h2 class="lock-title" id="lock-title">Sign in</h2>
+      <p class="lock-text" id="lock-text"></p>
+      <form class="lock-form" id="lock-form">
+        <label>Admin password
+          <input type="password" id="lock-password" autocomplete="current-password" required>
+        </label>
+        <label id="lock-confirm-label" hidden>Confirm password
+          <input type="password" id="lock-confirm" autocomplete="new-password" minlength="12">
+        </label>
+        <p class="lock-error" id="lock-error" role="status"></p>
+        <button class="btn solid lock-submit" id="lock-submit" type="submit">Sign in</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="taskbar-edge" aria-hidden="true"></div>
+  <nav class="taskbar" aria-label="Taskbar">
+    <div class="tb-lead">
+      <div class="start-wrap">
+        <button class="tb-start" id="start-btn" type="button" aria-label="Menu" aria-haspopup="dialog" aria-expanded="false"></button>
+        <div class="start-menu" id="start-menu" role="dialog" aria-label="Start menu" hidden></div>
+      </div>
+      <button class="tb-app tb-settings" id="tb-settings" type="button" aria-label="Settings"></button>
+      <button class="tb-app tb-folder" id="tb-folder" type="button" aria-label="Folder"></button>
+    </div>
+    <span class="tb-divider" aria-hidden="true"></span>
+    <div class="tb-mid" id="tb-mid">
+      <div class="tb-apps" id="tb-apps"></div>
+      <div class="tb-search" id="tb-search" role="search">
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.6 10.6 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input type="search" class="tb-search-input" id="tb-search-input" placeholder="Search apps and settings" aria-label="Search apps and settings" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="tray">
+      <div class="tray-status" role="group" aria-label="Status">
+        <span class="tray-pill" id="tray-srv-item" data-tone="idle" tabindex="0" role="status" aria-label="Server">
+          <span class="dot idle" id="tray-srv" aria-hidden="true"></span><span class="tray-label">Server</span>
+        </span>
+        <span class="tray-pill" id="tray-tw-item" data-tone="idle" tabindex="0" role="status" aria-label="Twitch">
+          <span class="dot idle" id="tray-tw" aria-hidden="true"></span><span class="tray-label">Twitch</span>
+        </span>
+      </div>
+      <span class="tray-clock" id="tray-clock"></span>
+    </div>
+  </nav>
+
+  <template id="tpl-settings">
+    <div class="settings-app">
+      <header class="settings-bar">
+        <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
+          <button class="settings-tab" type="button" role="tab" id="tab-general" data-tab="general" aria-controls="pane-general" aria-selected="true">General</button>
+          <button class="settings-tab" type="button" role="tab" id="tab-appearance" data-tab="appearance" aria-controls="pane-appearance" aria-selected="false">Appearance</button>
+          <button class="settings-tab" type="button" role="tab" id="tab-security" data-tab="security" aria-controls="pane-security" aria-selected="false">Security</button>
+          <button class="settings-tab" type="button" role="tab" id="tab-updates" data-tab="updates" aria-controls="pane-updates" aria-selected="false">Updates</button>
+          <button class="settings-tab" type="button" role="tab" id="tab-twitch" data-tab="twitch" aria-controls="pane-twitch" aria-selected="false">Twitch</button>
+          <button class="settings-tab" type="button" role="tab" id="tab-folder" data-tab="folder" aria-controls="pane-folder" aria-selected="false">Folder</button>
+        </nav>
+        <p class="muted" id="status" role="status"></p>
+      </header>
+
+      <div class="settings-grid settings-pane" id="pane-general" role="tabpanel" aria-labelledby="tab-general" data-pane="general">
+        <section class="widget" aria-labelledby="s-ui">
+          <h2 class="w-title" id="s-ui">Interface</h2>
+          <form class="form" data-section="interface">
+            <label>Language
+              <select name="language">
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="zh">中文</option>
+              </select>
+            </label>
+            <p class="hint">Changes the whole desktop and the Control Centre.</p>
+            <label class="check"><input type="checkbox" name="autoScrollLog"> Auto-scroll the live log</label>
+            <label class="check"><input type="checkbox" name="confirmStopServer"> Ask before stopping the server</label>
+          </form>
+        </section>
+
+        <section class="widget" aria-labelledby="s-startup">
+          <h2 class="w-title" id="s-startup">Startup</h2>
+          <form class="form" data-section="startup">
+            <label class="check"><input type="checkbox" name="startOnPc"> Launch Fishingbot Desktop with Windows</label>
+            <label class="check"><input type="checkbox" name="startWhenObsStarts"> Start the server when OBS opens</label>
+            <div class="startup-info-row">
+              <button class="info-tip" type="button" aria-label="Startup options information" aria-description="Starts Fishingbot Desktop minimized at Windows sign-in and waits for OBS. Closing the window exits the app and stops the OBS watcher. To let OBS launch Fishingbot while it is closed, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically." title="Startup options information" data-tip="Starts Fishingbot Desktop minimized at Windows sign-in and waits for OBS. Closing the window exits the app and stops the OBS watcher. To let OBS launch Fishingbot while it is closed, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically.">i</button>
+            </div>
+            <div class="startup-downloads">
+              <button class="btn" id="download-obs-lua" type="button">Download OBS Lua</button>
+              <button class="btn" id="download-obs-setup" type="button">Download setup ZIP</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="s-perf">
+          <h2 class="w-title" id="s-perf">Performance</h2>
+          <form class="form form-inline" data-section="performance">
+            <label>CPU alert (%)
+              <input type="number" name="cpuAlertPercent" min="5" max="100" step="1" required>
+            </label>
+            <label>Memory limit for the server (MB)
+              <input type="number" name="ramLimitMb" min="256" max="8192" step="64" required>
+            </label>
+            <label>Network alert (Mbps)
+              <input type="number" name="networkAlertMbps" min="1" max="1000" step="1" required>
+            </label>
+            <p class="hint">The memory limit applies the next time the server starts. Saved automatically.</p>
+          </form>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="s-queue">
+          <h2 class="w-title" id="s-queue">Queued changes</h2>
+          <p class="hint">Changes made while the server was stopped. They apply the next time the server starts, with the same checks as the Control Centre.</p>
+          <div class="queue-list" id="queue-list"></div>
+          <div class="row">
+            <button class="btn" id="queue-clear" type="button">Clear applied and rejected</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="ap-shell" id="pane-appearance" role="tabpanel" aria-labelledby="tab-appearance" data-pane="appearance" hidden>
+        <div class="ap-groups" role="tablist" aria-label="Appearance groups">
+          <button class="ap-group-tab" type="button" role="tab" data-group-tab="desktop" aria-selected="false">Desktop</button>
+          <button class="ap-group-tab" type="button" role="tab" data-group-tab="look" aria-selected="false">Look</button>
+          <button class="ap-group-tab" type="button" role="tab" data-group-tab="taskbar" aria-selected="false">Taskbar</button>
+          <button class="ap-group-tab" type="button" role="tab" data-group-tab="lock" aria-selected="false">Lock screen</button>
+          <button class="ap-group-tab" type="button" role="tab" data-group-tab="widgets" aria-selected="false">Widgets</button>
+        </div>
+        <form class="settings-grid settings-pane ap-scroll" id="look-form" data-section="appearance">
+        <div class="ap-group" data-group="desktop">
+        <section class="widget widget-wide" aria-labelledby="ap-scale">
+          <h2 class="w-title" id="ap-scale">Scale</h2>
+          <label>Size of the desktop
+            <select name="uiScale">
+              <option value="auto">Automatic (fits the screen)</option>
+              <option value="70">70%</option>
+              <option value="75">75%</option>
+              <option value="80">80%</option>
+              <option value="90">90%</option>
+              <option value="100">100% (default)</option>
+              <option value="110">110%</option>
+              <option value="125">125%</option>
+            </select>
+          </label>
+          <p class="hint">Makes the whole desktop smaller or larger: windows, icons, widgets and the taskbar. Automatic picks a smaller size when the screen is too small for the default window, so everything fits without scrolling. The window's minimum size follows the scale.</p>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="ap-profile">
+          <h2 class="w-title" id="ap-profile">Profile picture</h2>
+          <div class="profile-picker">
+            <div class="profile-preview" id="profile-preview" aria-hidden="true"><span>F</span></div>
+            <div class="wallpaper-actions">
+              <button class="btn solid" type="button" id="profile-upload">Upload picture…</button>
+              <button class="btn" type="button" id="profile-reset">Use the letter</button>
+            </div>
+          </div>
+          <p class="hint">Best size: 512 × 512 px, square. PNG, JPEG, WebP or GIF, up to 5 MB. The picture replaces the menu logo on the taskbar and shows on the lock screen. Without one, the logo and the letter F are used.</p>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="ap-wallpaper">
+          <h2 class="w-title" id="ap-wallpaper">Wallpaper</h2>
+          <div class="wallpaper-picker">
+            <div class="wallpaper-preview" id="wallpaper-preview">
+              <div class="wallpaper-live" data-wallpaper-live aria-hidden="true"></div>
+              <span id="wallpaper-name" data-wallpaper-name>Built-in wallpaper</span>
+            </div>
+            <div class="wallpaper-actions">
+              <button class="btn solid" id="wallpaper-upload" type="button">Upload image…</button>
+              <button class="btn" id="wallpaper-reset" type="button">Use built-in</button>
+              <p class="hint">PNG, JPEG, WebP or GIF, up to 15 MB. Best size: 1920 × 1080 px or larger (16:9). Animated GIFs: keep to 1920 × 1080 px and under 15 MB, or they load slowly.</p>
+            </div>
+          </div>
+          <div class="wallpaper-choices" role="radiogroup" aria-label="Built-in wallpaper">
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="ember"><img src="wallpapers/ember.svg" alt=""><span>Ember</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="night"><img src="wallpapers/night.svg" alt=""><span>Night</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="forest"><img src="wallpapers/forest.svg" alt=""><span>Forest</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="ocean"><img src="wallpapers/ocean.svg" alt=""><span>Ocean</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="sunset"><img src="wallpapers/sunset.svg" alt=""><span>Sunset</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="graphite"><img src="wallpapers/graphite.svg" alt=""><span>Graphite</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="anim1"><img src="https://media.giphy.com/media/JpwZX7oOiUjc4T92BN/giphy.gif" alt=""><span>Animated 1</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="anim2"><img src="https://media.giphy.com/media/NPC82QxThOUWIl7YMK/giphy.gif" alt=""><span>Animated 2</span></label>
+            <label class="wp-choice"><input type="radio" name="builtinWallpaper" value="anim3"><img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3M2M0b29yMmtxOWxtZ2I4MnpmcTRoejdkMGQzcXdnNmZqbHMyYzR5NSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/JCOCRhPdsVHHeh2Ffc/giphy.gif" alt=""><span>Animated 3</span></label>
+          </div>
+          <div class="appearance-fields">
+            <label>Fit
+              <select name="wallpaperFit">
+                <option value="cover">Fill the screen</option>
+                <option value="contain">Fit inside, no cropping</option>
+                <option value="center">Original size, centred</option>
+                <option value="tile">Repeat as a pattern</option>
+              </select>
+            </label>
+            <label>Dim
+              <span class="range-row"><input type="range" name="wallpaperDim" min="0" max="80" step="5"><output data-out="wallpaperDim"></output></span>
+            </label>
+            <label>Blur
+              <span class="range-row"><input type="range" name="wallpaperBlur" min="0" max="20" step="1"><output data-out="wallpaperBlur"></output></span>
+            </label>
+          </div>
+          <div class="appearance-fields">
+            <label class="check"><input type="checkbox" name="desktopColorOn"> Use a solid colour instead of the wallpaper</label>
+            <label>Solid colour
+              <input type="color" name="desktopColor" value="#101214" class="colour-input">
+            </label>
+          </div>
+        </section>
+
+        <section class="widget" aria-labelledby="ap-icons">
+          <h2 class="w-title" id="ap-icons">Icons</h2>
+          <label>Size
+            <select name="iconSize">
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" name="showIconLabels"> Show names under the icons</label>
+          <div class="row"><button class="btn" type="button" id="reset-icons">Reset icon positions</button></div>
+          <p class="hint">Icons snap to a grid. Drop one on an occupied cell and the two swap places.</p>
+        </section>
+
+
+
+        </div>
+        <div class="ap-group" data-group="look">
+        <section class="widget" aria-labelledby="ap-colour">
+          <h2 class="w-title" id="ap-colour">Colour and glass</h2>
+          <div class="swatches" role="radiogroup" aria-label="Accent colour">
+            <label class="swatch swatch-signal"><input type="radio" name="accent" value="signal"><span class="swatch-dot" aria-hidden="true"></span><span>Signal</span></label>
+            <label class="swatch swatch-teal"><input type="radio" name="accent" value="teal"><span class="swatch-dot" aria-hidden="true"></span><span>Teal</span></label>
+            <label class="swatch swatch-blue"><input type="radio" name="accent" value="blue"><span class="swatch-dot" aria-hidden="true"></span><span>Blue</span></label>
+            <label class="swatch swatch-violet"><input type="radio" name="accent" value="violet"><span class="swatch-dot" aria-hidden="true"></span><span>Violet</span></label>
+            <label class="swatch swatch-green"><input type="radio" name="accent" value="green"><span class="swatch-dot" aria-hidden="true"></span><span>Green</span></label>
+            <label class="swatch swatch-pink"><input type="radio" name="accent" value="pink"><span class="swatch-dot" aria-hidden="true"></span><span>Pink</span></label>
+            <label class="swatch swatch-custom"><input type="radio" name="accent" value="custom"><span class="swatch-dot" aria-hidden="true"></span><span>Custom</span></label>
+          </div>
+          <label>Custom colour
+            <input type="color" name="customAccent" value="#f2703f" class="colour-input">
+          </label>
+          <label>Glass
+            <span class="range-row"><input type="range" name="glassOpacity" min="0" max="100" step="2"><output data-out="glassOpacity"></output></span>
+          </label>
+          <label>App grids
+            <span class="range-row"><input type="range" name="gridOpacity" min="0" max="100" step="2"><output data-out="gridOpacity"></output></span>
+          </label>
+          <label class="check"><input type="checkbox" name="textShadow"> Text shadow (off: names sit on a faint dark plate instead)</label>
+          <label>Text size
+            <span class="range-row"><input type="range" name="textScale" min="85" max="125" step="5"><output data-out="textScale"></output></span>
+          </label>
+          <label>Corner rounding
+            <span class="range-row"><input type="range" name="cornerRadius" min="0" max="24" step="1"><output data-out="cornerRadius"></output></span>
+          </label>
+          <p class="hint">Glass sets how solid the windows, widgets and icons are. At 0 they are clear, and the background behind them is blurred instead.</p>
+        </section>
+
+        <section class="widget" aria-labelledby="ap-interface">
+          <h2 class="w-title" id="ap-interface">Interface</h2>
+          <label>Font
+            <select name="uiFont">
+              <option value="system">Segoe UI Semibold (default)</option>
+              <option value="segoe">Segoe UI</option>
+              <option value="aptos">Aptos</option>
+              <option value="calibri">Calibri</option>
+              <option value="arial">Arial</option>
+              <option value="verdana">Verdana</option>
+              <option value="tahoma">Tahoma</option>
+              <option value="serif">Georgia (serif)</option>
+              <option value="cambria">Cambria (serif)</option>
+              <option value="mono">Consolas (monospace)</option>
+              <option value="cascadia">Cascadia Mono (monospace)</option>
+            </select>
+          </label>
+          <label>Performance mode
+            <select name="performanceMode">
+              <option value="custom">Custom (my settings)</option>
+              <option value="performance">Performance (most efficient)</option>
+            </select>
+          </label>
+          <input type="hidden" name="customLook" value="">
+          <label class="check"><input type="checkbox" name="reduceMotion"> Reduce motion</label>
+        </section>
+
+        </div>
+        <div class="ap-group" data-group="taskbar">
+        <section class="widget" aria-labelledby="ap-taskbar">
+          <h2 class="w-title" id="ap-taskbar">Taskbar</h2>
+          <label>Size
+            <select name="taskbarSize">
+              <option value="compact">Compact</option>
+              <option value="normal">Normal</option>
+              <option value="large">Large</option>
+            </select>
+          </label>
+          <label>Alignment
+            <select name="taskbarAlign">
+              <option value="left">Left</option>
+              <option value="centre">Centre</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+          <label>Opacity
+            <span class="range-row"><input type="range" name="taskbarOpacity" min="40" max="100" step="2"><output data-out="taskbarOpacity"></output></span>
+          </label>
+          <div class="check-list">
+            <label class="check"><input type="checkbox" name="taskbarFull"> Full width across the bottom</label>
+            <label class="check"><input type="checkbox" name="taskbarAutoHide"> Hide until the pointer reaches the bottom edge</label>
+            <label class="check"><input type="checkbox" name="showTaskbarClock"> Show the clock</label>
+            <label class="check"><input type="checkbox" name="taskbarSearch"> Show the search bar in the taskbar</label>
+          </div>
+        </section>
+
+        <section class="widget" aria-labelledby="ap-pills">
+          <h2 class="w-title" id="ap-pills">Status pills</h2>
+          <label>Style
+            <select name="pillStyle">
+              <option value="soft">Soft tint</option>
+              <option value="solid">Solid colour</option>
+              <option value="dot">Dot only</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" name="showTaskbarStatus"> Show the server and Twitch status</label>
+          <p class="hint">Green is running, amber is busy, red needs attention and grey is off. Dot only shows the name when you hover.</p>
+        </section>
+
+        </div>
+        <div class="ap-group" data-group="lock">
+        <section class="widget" aria-labelledby="ap-lock">
+          <h2 class="w-title" id="ap-lock">Lock screen</h2>
+          <label class="check"><input type="checkbox" name="lockUseDesktop"> Use the desktop wallpaper</label>
+          <label>Blur
+            <span class="range-row"><input type="range" name="lockBlur" min="0" max="20" step="1"><output data-out="lockBlur"></output></span>
+          </label>
+          <label>Dim
+            <span class="range-row"><input type="range" name="lockDim" min="0" max="80" step="5"><output data-out="lockDim"></output></span>
+          </label>
+          <label>Greeting
+            <input type="text" name="lockGreeting" maxlength="40" placeholder="Welcome Back" autocomplete="off">
+          </label>
+          <div class="check-list">
+            <label class="check"><input type="checkbox" name="lockShowDate"> Show the date</label>
+            <label class="check"><input type="checkbox" name="showLockClock"> Show the clock</label>
+          </div>
+        </section>
+
+        </div>
+        <div class="ap-group" data-group="widgets">
+        <section class="widget widget-wide" id="widgets-show" aria-labelledby="ap-widgets">
+          <h2 class="w-title" id="ap-widgets">Widgets on the desktop</h2>
+          <label class="check"><input type="checkbox" name="showWidgets"> Show the widgets</label>
+          <div class="check-list">
+            <label class="check"><input type="checkbox" name="widgetClock"> Time and date</label>
+            <label class="check"><input type="checkbox" name="widgetSrv"> Local server</label>
+            <label class="check"><input type="checkbox" name="widgetTw"> Twitch bot</label>
+            <label class="check"><input type="checkbox" name="widgetLog"> Live log</label>
+            <label class="check"><input type="checkbox" name="widgetSys"> System usage</label>
+          </div>
+          <label>Widget size
+            <select name="widgetSize">
+              <option value="compact">Compact (default)</option>
+              <option value="normal">Normal</option>
+              <option value="large">Large</option>
+            </select>
+          </label>
+          <p class="hint">A hidden widget is not deleted. Turn it on again and it comes back where it was.</p>
+          <div class="row"><button class="btn" type="button" id="reset-widgets">Reset widget positions</button></div>
+          <p class="hint">To move or resize widgets, open the Start menu and choose Edit layout.</p>
+        </section>
+
+        <section class="widget" id="widgets-clock" aria-labelledby="ap-clock">
+          <h2 class="w-title" id="ap-clock">Clock and date</h2>
+          <label class="check"><input type="checkbox" name="showClock"> Show the clock and date on the desktop</label>
+          <label>Style
+            <select name="clockStyle">
+              <option value="plain">Plain text (as before)</option>
+              <option value="card">Card, like the other widgets</option>
+            </select>
+          </label>
+          <label>Font of the time
+            <select name="clockFont">
+              <option value="system">Segoe UI</option>
+              <option value="serif">Serif (Georgia)</option>
+              <option value="mono">Monospace (Consolas)</option>
+            </select>
+          </label>
+          <label>Alignment
+            <select name="clockAlign">
+              <option value="left">Left</option>
+              <option value="centre">Centre</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+          <div class="appearance-fields">
+            <label>Colour
+              <select name="clockColour">
+                <option value="ink">Default</option>
+                <option value="accent">Accent</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label>Custom colour
+              <input type="color" name="clockCustomColour" value="#f1f2f4" class="colour-input">
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" name="showDate"> Show the date</label>
+          <label>Date format
+            <select name="dateFormat">
+              <option value="long">Friday 7 November</option>
+              <option value="short">Fri 7 Nov</option>
+              <option value="numeric">07/11/2026</option>
+            </select>
+          </label>
+          <label>Date position
+            <select name="datePosition">
+              <option value="below">Below the time</option>
+              <option value="above">Above the time</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" name="clock24h"> 24-hour time</label>
+          <label class="check"><input type="checkbox" name="showSeconds"> Show seconds</label>
+          <label class="check"><input type="checkbox" name="clockShadow"> Text shadow, for readability on bright wallpapers</label>
+          <p class="hint">The clock and date are a desktop widget. The text scales to fill the widget. In Edit layout, drag it and use its corner to make it bigger or smaller.</p>
+        </section>
+        </div>
+
+        <section class="widget" aria-labelledby="ap-save">
+          <h2 class="w-title" id="ap-save">Changes save automatically</h2>
+          <div class="row">
+            <button class="btn" type="button" id="appearance-undo">Undo last change</button>
+            <button class="btn" type="button" id="appearance-defaults">Restore defaults</button>
+          </div>
+          <p class="hint">Undo goes back to the look from before the last change. Wallpaper uploads are not undone.</p>
+        </section>
+        </form>
+      </div>
+
+
+      <div class="settings-grid settings-pane" id="pane-security" role="tabpanel" aria-labelledby="tab-security" data-pane="security" hidden>
+        <section class="widget" aria-labelledby="s-security">
+          <h2 class="w-title" id="s-security">Session</h2>
+          <form class="form" data-section="security">
+            <label>Session timeout (minutes)
+              <input type="number" name="sessionTimeoutMinutes" min="5" max="480" step="1" required>
+            </label>
+            <p class="hint">How long a Control Centre login lasts without activity. 5 to 480 minutes. Saved automatically.</p>
+          </form>
+        </section>
+
+        <section class="widget" aria-labelledby="s-autolock">
+          <h2 class="w-title" id="s-autolock">Auto-lock</h2>
+          <form class="form" data-section="security">
+            <label>Lock after no mouse or keyboard use
+              <select name="autoLockMinutes">
+                <option value="0">Never</option>
+                <option value="5">5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="120">2 hours</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" name="lockOnWindowsLock"> Lock when Windows locks or the PC sleeps</label>
+            <p class="hint">Saved automatically. The lock screen asks for the admin password before any app opens again.</p>
+          </form>
+          <div class="row"><button class="btn" type="button" id="lock-now">Lock now</button></div>
+        </section>
+
+        <section class="widget" aria-labelledby="s-backup">
+          <h2 class="w-title" id="s-backup">Database backups</h2>
+          <form class="form" data-section="security">
+            <label>Automatic backup
+              <select name="backupIntervalHours">
+                <option value="0">Off</option>
+                <option value="6">Every 6 hours</option>
+                <option value="12">Every 12 hours</option>
+                <option value="24">Once a day</option>
+                <option value="168">Once a week</option>
+              </select>
+            </label>
+            <label>Keep the newest
+              <input type="number" name="backupKeep" min="1" max="30" step="1" required>
+            </label>
+            <p class="hint">Copies of the database, made by the server while it runs, in the data/backups folder. Saved automatically.</p>
+          </form>
+          <div class="row">
+            <button class="btn solid" type="button" id="backup-now">Back up now</button>
+            <span class="muted" id="backup-status" role="status"></span>
+          </div>
+          <dl class="kv" id="backup-list"></dl>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="s-db-import">
+          <h2 class="w-title" id="s-db-import">Import an old database</h2>
+          <p class="hint">Restore a complete Fishingbot export from JSON, CSV, or SQL. The file is validated before writing; accepted rows are imported in batches inside one transaction. A pre-import database backup is created automatically when a database already exists.</p>
+          <div class="form form-inline">
+            <div>
+              <label>Export file</label>
+              <div class="row">
+                <button class="btn" type="button" id="db-import-choose">Choose file…</button>
+                <span class="muted" id="db-import-file">No file selected</span>
+              </div>
+            </div>
+            <label>Duplicate-key policy
+              <select id="db-import-policy">
+                <option value="prompt">Ask if duplicates are found</option>
+                <option value="skip">Skip existing keys</option>
+                <option value="overwrite">Overwrite existing keys</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <button class="btn solid" type="button" id="db-import-start" disabled>Validate and import</button>
+            <button class="btn" type="button" id="db-import-cancel" disabled>Cancel import</button>
+            <span class="muted" id="db-import-status" role="status" aria-live="polite">Choose a JSON, CSV, or SQL export to begin.</span>
+          </div>
+          <progress id="db-import-progress" max="100" value="0" aria-label="Database import progress"></progress>
+          <p class="hint" id="db-import-counts">Processed 0 rows · Succeeded 0 · Skipped 0 · Failed 0 · ETA —</p>
+          <ul class="import-errors" id="db-import-errors" aria-live="polite"></ul>
+        </section>
+
+        <section class="widget" aria-labelledby="s-limits">
+          <h2 class="w-title" id="s-limits">Sign-in and network</h2>
+          <dl class="kv">
+            <dt>Sign-in</dt><dd>Admin password</dd>
+            <dt>Wrong passwords</dt><dd>Sign-in waits 15 minutes after too many</dd>
+            <dt>Network</dt><dd>This PC only (localhost)</dd>
+          </dl>
+          <p class="hint">Connections into the server are accepted from this PC only. The Twitch connection is outgoing and is unchanged.</p>
+        </section>
+
+        <section class="widget" aria-labelledby="s-password">
+          <h2 class="w-title" id="s-password">Admin password</h2>
+          <form class="form" data-action="password">
+            <label>Current admin password
+              <input type="password" name="currentPassword" autocomplete="current-password" required>
+            </label>
+            <label>New admin password (12 characters or more)
+              <input type="password" name="newPassword" autocomplete="new-password" minlength="12" required>
+            </label>
+            <p class="hint">Changing the password revokes Twitch Master Admin sessions.</p>
+            <button class="btn" type="submit">Change password</button>
+          </form>
+        </section>
+      </div>
+
+      <div class="settings-grid settings-pane" id="pane-updates" role="tabpanel" aria-labelledby="tab-updates" data-pane="updates" hidden>
+        <section class="widget widget-wide" aria-labelledby="s-updates">
+          <h2 class="w-title" id="s-updates">Automatic updates</h2>
+          <form class="form form-inline" data-section="updates">
+            <label class="check"><input type="checkbox" name="autoCheck"> Check for updates when the app starts</label>
+          </form>
+          <div class="row">
+            <button class="btn" id="check-updates" type="button">Check for updates now</button>
+            <p class="hint" id="update-result" role="status"></p>
+          </div>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="s-source">
+          <h2 class="w-title" id="s-source">Update source</h2>
+          <form class="form form-inline" data-section="updates" data-action="repo">
+            <label>GitHub repository (owner/repository)
+              <input type="text" name="repository" placeholder="owner/repository" autocomplete="off" spellcheck="false">
+            </label>
+            <label>Admin password
+              <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <button class="btn" type="submit">Save update source</button>
+          </form>
+        </section>
+      </div>
+
+      <div class="settings-grid settings-pane" id="pane-folder" role="tabpanel" aria-labelledby="tab-folder" data-pane="folder" hidden>
+        <section class="widget widget-wide" aria-labelledby="s-folder">
+          <h2 class="w-title" id="s-folder">Folder</h2>
+          <p class="hint">The Folder app reads and edits the local database. Each save asks for confirmation first.</p>
+          <form class="form form-inline" data-section="folder">
+            <label>Open the Folder app grouped by
+              <select name="mode">
+                <option value="all">All entries</option>
+                <option value="viewer">Viewer</option>
+                <option value="key">Key name</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" name="showShared"> Show shared and system keys</label>
+            <label class="check"><input type="checkbox" name="showExpired"> Show expired entries</label>
+            <label>Database backups to keep
+              <input type="number" name="backupKeep" min="5" max="1000" step="1" required>
+            </label>
+          </form>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="s-folder-viewers">
+          <h2 class="w-title" id="s-folder-viewers">Viewer folders</h2>
+          <p class="hint">Viewers the database scan cannot find on its own. Add a login in the Folder app.</p>
+          <ul class="folder-viewers" id="folder-viewers"></ul>
+        </section>
+      </div>
+
+      <div class="settings-grid settings-pane" id="pane-twitch" role="tabpanel" aria-labelledby="tab-twitch" data-pane="twitch" hidden>
+        <section class="widget" aria-labelledby="s-twitch">
+          <h2 class="w-title" id="s-twitch">Twitch legacy OAuth (offline)</h2>
+          <form class="form" data-action="twitch">
+            <label>Client ID
+              <span class="mask-row">
+                <input name="clientId" type="text" class="masked" maxlength="128" autocomplete="off" spellcheck="false">
+                <button class="btn small" type="button" id="client-reveal" aria-pressed="false">Show</button>
+              </span>
+            </label>
+            <label>Legacy client secret (optional)
+              <input name="clientSecret" type="password" maxlength="256" autocomplete="new-password" placeholder="Leave empty to keep the saved one">
+            </label>
+            <p class="hint">Not needed for bot sign-in or the Extension. Only changeable while the server is stopped. The secret is never shown again.</p>
+            <button class="btn solid" type="submit">Save Twitch settings</button>
+          </form>
+        </section>
+
+        <section class="widget" aria-labelledby="s-admin">
+          <h2 class="w-title" id="s-admin">Twitch Master Admin</h2>
+          <form class="form" data-action="pair">
+            <label>Admin password
+              <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <button class="btn" type="submit">Generate pairing code</button>
+            <p class="hint" id="pair-out" role="status"></p>
+          </form>
+          <div class="row">
+            <button class="btn danger" id="unlink-btn" type="button">Unlink Twitch Master Admin</button>
+          </div>
+          <p class="hint">Revokes every Extension Master Admin session. Enter the admin password in the pairing form first.</p>
+        </section>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-log">
+    <div class="log-app">
+      <div class="log-toolbar">
+        <select class="btn" data-role="filter" aria-label="Show lines">
+          <option value="all">All lines</option>
+          <option value="warn">Warnings and errors</option>
+          <option value="error">Errors only</option>
+        </select>
+        <label class="check"><input type="checkbox" data-role="autoscroll" checked> Auto-scroll</label>
+        <button class="btn" data-role="clear" type="button">Clear</button>
+        <span class="muted" data-role="count"></span>
+      </div>
+      <div class="log" data-role="list" role="log" aria-live="off"></div>
+    </div>
+  </template>
+
+  <script src="dropdown.js"></script>
+  <script src="icons.js"></script>
+  <script src="apps/settings.js"></script>
+  <script src="apps/log.js"></script>
+  <script src="apps/folder.js"></script>
+  <script src="appearance.js"></script>
+  <script src="i18n.js"></script>
+  <script src="desktop.js"></script>
+  <div class="snap-pop" id="snap-pop" role="menu" aria-label="Snap layouts" hidden></div>
+</body>
+</html>
