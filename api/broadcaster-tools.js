@@ -2,7 +2,7 @@ import { db, LOCAL_EDITION } from '../lib/db.js';
 import { getSessionUser } from '../lib/session.js';
 import { getBroadcasterAdmin, verifyBroadcasterAdminSession, LOCAL_OWNER } from '../lib/broadcaster-admin.js';
 import { parseCookies } from '../lib/session.js';
-import { removeInventoryItems } from '../lib/inventory.js';
+import { readInventoryItems, removeInventoryItems } from '../lib/inventory.js';
 import { recordAdminAudit } from '../lib/audit.js';
 import { recalculateBestCatch, checkAndCleanLuckStatus } from './admin/action.js';
 import { readChannelProgress, buyChannelUpgrade, CHANNEL_UPGRADES, CHANNEL_UPGRADE_COSTS } from '../lib/channel-progress.js';
@@ -233,7 +233,7 @@ export default async function handler(req, res) {
   if (action === 'get-inventory') {
     const targetUser = cleanUser(req.body?.targetUser);
     if (!validUser(targetUser)) return res.status(400).json({ error: 'Enter a valid Twitch username.' });
-    const items = (await db.lrange(`fish:rares:${targetUser}`, 0, -1).catch(() => [])) || [];
+    const items = await readInventoryItems(db, targetUser);
     return res.status(200).json({ success: true, targetUser, items: items.map(String) });
   }
 
@@ -244,7 +244,7 @@ export default async function handler(req, res) {
     if (!validUser(targetUser)) return res.status(400).json({ error: 'Enter a valid Twitch username.' });
     if (!Array.isArray(items) || !items.length || items.length > 500) return res.status(400).json({ error: 'Select between 1 and 500 items.' });
 
-    const members = (await db.lrange(`fish:rares:${targetUser}`, 0, -1).catch(() => [])) || [];
+    const members = await readInventoryItems(db, targetUser);
     if (!members.length) return res.status(404).json({ error: `@${targetUser} has no inventory items.` });
 
     const remainingTargets = [...items];

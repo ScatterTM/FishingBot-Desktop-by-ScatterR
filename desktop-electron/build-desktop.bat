@@ -42,6 +42,9 @@ rem Ship the OBS script beside the app when this build script is run without bui
 if not exist "%DIST%\obs-scripts" mkdir "%DIST%\obs-scripts"
 copy /y "%ROOT%\obs-scripts\fishingbot-autostart.lua" "%DIST%\obs-scripts\" >nul
 if errorlevel 1 (echo Copying OBS auto-start script failed. & goto :fail)
+if not exist "%DIST%\downloads" mkdir "%DIST%\downloads"
+copy /y "%ROOT%\downloads\Fishingbot-OBS-Startup-Setup.zip" "%DIST%\downloads\" >nul
+if errorlevel 1 (echo Copying OBS setup ZIP failed. & goto :fail)
 if not exist "%DIST%\lib" mkdir "%DIST%\lib"
 copy /y "%ROOT%\lib\db-manager-worker.mjs" "%DIST%\lib\" >nul
 if errorlevel 1 (echo Copying database worker failed. & goto :fail)

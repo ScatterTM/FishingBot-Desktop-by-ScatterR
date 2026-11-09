@@ -1,7 +1,7 @@
 import { db } from '../../lib/db.js';
 import { applyItemEffects as applyItemEffectsShared } from '../../lib/effects.js';
 import { SHOP_ITEMS, BOOSTABLE_RARITIES, allShopKeys } from '../../lib/shop.js';
-import { addInventoryItems, backfillTreasuryList, deleteUserCatchData, getRecentCatchLog, recordCatch, recordCatches, removeInventoryItems, treasuryListMatches, withKeyLock } from '../../lib/inventory.js';
+import { addInventoryItems, backfillTreasuryList, deleteUserCatchData, getRecentCatchLog, readInventoryItems, recordCatch, recordCatches, removeInventoryItems, treasuryListMatches, withKeyLock } from '../../lib/inventory.js';
 import { deleteAdminAuditEntry, getRecentAdminAudit, recordAdminAudit } from '../../lib/audit.js';
 import { recordUserMail } from '../../lib/user-mail.js';
 import { TIERS } from '../../lib/tiers.js';
@@ -538,8 +538,8 @@ export default async function handler(req, res) {
           const targetError = requireTarget();
           if (targetError) return res.status(400).json(targetError);
         }
-        const members = (await db.lrange(`fish:rares:${cleanTarget}`, 0, -1)) || [];
-        return res.status(200).json({ success: true, targetUser: cleanTarget, items: members.map(String) });
+        const members = await readInventoryItems(db, cleanTarget);
+        return res.status(200).json({ success: true, targetUser: cleanTarget, items: members });
       }
 
       // Removes every inventory entry of ONE rarity from ONE player and

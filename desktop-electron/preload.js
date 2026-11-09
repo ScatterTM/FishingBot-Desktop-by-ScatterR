@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('fishingbot', {
   stopServer: () => ipcRenderer.invoke('server:stop'),
   restartServer: () => ipcRenderer.invoke('server:restart'),
   reconnectTwitch: () => ipcRenderer.invoke('twitch:reconnect'),
+  downloadAsset: (kind) => ipcRenderer.invoke('download:asset', kind),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (section, values) => ipcRenderer.invoke('settings:save', section, values),
   setUpdateRepository: (payload) => ipcRenderer.invoke('admin:repository', payload),

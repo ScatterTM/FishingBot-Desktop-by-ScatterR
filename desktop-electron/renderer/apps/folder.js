@@ -135,9 +135,14 @@
 
   // Viewers are found from the keys: a key whose first part is a viewer-data root ends in the viewer's login.
   // Anything else (globals, settings, the loot table) is listed as shared. Logins can also be added by hand.
-  const SEGMENT_SPLIT = /[:._/|\\-]+/;
-  const VIEWER_ROOTS = new Set(['fish', 'toggle', 'user', 'user-mail-read', 'perm_luck', 'real_vip', 'game_vip',
-    'treasury_spent', 'pond', 'trade', 'perk-gift', 'inventory', 'fish_format', 'perks', 'autofish', 'progress']);
+  // Twitch logins may contain underscores; keep them intact while splitting database key paths.
+  const SEGMENT_SPLIT = /[:./|\\-]+/;
+  const VIEWER_ROOTS = ['settings:user_areas_off', 'settings:user_double_off', 'shield_inventory_v2',
+    'progression', 'user-mail-read', 'treasury_spent', 'fish_format',
+    'fish', 'perm_luck', 'temp_luck', 'real_vip', 'game_vip',
+    'fishing_area_level', 'fishing_area_selected', 'shop_cooldown', 'autofish', 'timeout', 'cooldown',
+    'shields_used', 'shields', 'shop_luck', 'treasury', 'luck', 'pond', 'perks', 'toggle', 'trade', 'user', 'twitch_uid']
+    .sort((a, b) => b.length - a.length);
   const NOT_VIEWER = new Set(['normal', 'cooldown', 'global', 'event_name', 'event_luck', 'event_expires', 'rarity',
     'treasury', 'all', 'default', 'simplechat', 'local', 'admin', 'master', 'broadcaster', 'channel', 'config',
     'session', 'auth', 'audit', 'ratelock', 'settings', 'count', 'bestitem', 'besttier', 'mail', 'read', 'vip',
@@ -201,8 +206,10 @@
       extraViewers: [],
       split: readSplit(),   // editor share of the work area
       side: readSide(),     // viewers panel width in px
+      listLimit: 250,
     };
     let searchTimer = null;
+    let groupsCache = null;
 
     // ----- layout -----
     const banner = h('div', { class: 'fd-banner', hidden: true },
@@ -300,21 +307,15 @@
     body.append(root);
 
     // ----- data -----
-    function loginsNow() {
-      const found = new Set(state.extraViewers);
-      for (const e of state.entries) {
-        const segs = e.key.toLowerCase().split(SEGMENT_SPLIT).filter(Boolean);
-        if (segs.length < 2 || !VIEWER_ROOTS.has(segs[0])) continue;
-        const last = segs[segs.length - 1];
-        if (/^[a-z0-9_]{2,25}$/.test(last) && !NOT_VIEWER.has(last)) found.add(last);
-      }
-      return [...found].sort();
+    function loginFromKey(key) {
+      const lower = String(key || '').toLowerCase();
+      const root = VIEWER_ROOTS.find((candidate) => lower.startsWith(candidate)
+        && /^[:./|\\-]/.test(lower.slice(candidate.length, candidate.length + 1)));
+      if (!root) return '';
+      const tail = lower.slice(root.length).split(SEGMENT_SPLIT).filter(Boolean);
+      const login = tail[tail.length - 1] || '';
+      return /^[a-z0-9_]{2,25}$/.test(login) && !NOT_VIEWER.has(login) ? login : '';
     }
-
-    const ownersOf = (key, logins) => {
-      const segs = new Set(key.toLowerCase().split(SEGMENT_SPLIT));
-      return logins.filter((login) => segs.has(login));
-    };
 
     // The entries the screen works from: the search results while searching, otherwise every entry.
     const sourceList = () => (state.matches || state.entries).filter((e) => state.cfg.showExpired || !e.expired);
@@ -323,26 +324,62 @@
         : state.type === 'expired' ? !!e.expired : true);
     const sizeOf = (items) => items.reduce((n, e) => n + (e.size || 0), 0);
 
-    // Groups of entries by viewer. `typed` applies the type filter (the list does, the viewer counts do not).
+    // Build viewer ownership in one pass over key segments (rather than filtering every login for every key).
+    // Grouping is cached independently from the type filter, so changing Values/Lists/Expired never
+    // triggers another full scan of a large database. Filtered group maps are built lazily per type.
     function buildGroups(typed) {
-      const logins = loginsNow();
-      const groups = new Map();
-      const add = (id, label, e) => {
-        if (!groups.has(id)) groups.set(id, { id, label, items: [] });
-        groups.get(id).items.push(e);
-      };
-      for (const e of sourceList()) {
-        if (typed && !typeOk(e)) continue;
-        const owners = ownersOf(e.key, logins);
-        if (!owners.length) {
-          if (state.cfg.showShared) add(SHARED, t('Shared and system keys'), e);
-        } else {
-          for (const login of owners) add(login, login, e);
+      const cacheMatches = groupsCache
+        && groupsCache.source === (state.matches || state.entries)
+        && groupsCache.entries === state.entries
+        && groupsCache.extra === state.extraViewers
+        && groupsCache.showShared === state.cfg.showShared
+        && groupsCache.showExpired === state.cfg.showExpired;
+      if (!cacheMatches) {
+        const visible = sourceList();
+        const logins = new Set(state.extraViewers);
+        for (const entry of state.entries) {
+          const login = loginFromKey(entry.key);
+          if (login) logins.add(login);
         }
+        const groupsAll = new Map();
+        const add = (id, label, entry) => {
+          if (!groupsAll.has(id)) groupsAll.set(id, { id, label, items: [], sortedBy: '', sortedItems: [] });
+          if (entry) groupsAll.get(id).items.push(entry);
+        };
+        for (const entry of visible) {
+          const owners = new Set();
+          for (const part of String(entry.key).toLowerCase().split(SEGMENT_SPLIT)) {
+            if (logins.has(part)) owners.add(part);
+          }
+          if (!owners.size) {
+            if (state.cfg.showShared) add(SHARED, t('Shared and system keys'), entry);
+          } else {
+            for (const login of owners) add(login, login, entry);
+          }
+        }
+        // Keep empty known viewers visible in the sidebar, but never as entry rows.
+        if (!state.matches) {
+          for (const login of logins) {
+            if (!groupsAll.has(login)) add(login, login, null);
+          }
+        }
+        groupsCache = {
+          source: state.matches || state.entries, entries: state.entries, extra: state.extraViewers,
+          showShared: state.cfg.showShared, showExpired: state.cfg.showExpired, visible, groupsAll,
+          typedByType: new Map(),
+        };
       }
-      // In browsing, every known viewer is listed, even one with no entries yet.
-      if (!state.matches) for (const login of logins) if (!groups.has(login)) groups.set(login, { id: login, label: login, items: [] });
-      return sortGroups([...groups.values()]);
+      if (!typed || state.type === 'all') return sortGroups([...groupsCache.groupsAll.values()]);
+      let filtered = groupsCache.typedByType.get(state.type);
+      if (!filtered) {
+        filtered = new Map();
+        for (const [id, group] of groupsCache.groupsAll) {
+          const items = group.items.filter(typeOk);
+          if (items.length) filtered.set(id, { id, label: group.label, items, sortedBy: '', sortedItems: [] });
+        }
+        groupsCache.typedByType.set(state.type, filtered);
+      }
+      return sortGroups([...filtered.values()]);
     }
 
     function sortGroups(list) {
@@ -368,7 +405,7 @@
       return h('button', {
         class: `fd-viewer${on ? ' on' : ''}${row.id === SHARED ? ' shared' : ''}`, type: 'button', role: 'listitem',
         'aria-pressed': String(on),
-        onclick: () => { state.viewer = row.id; render(); },
+        onclick: () => { state.viewer = row.id; state.listLimit = 250; render(); },
       },
       h('span', { class: 'fd-avatar', 'aria-hidden': 'true', text: avatar }),
       h('span', { class: 'fd-viewer-name', text: row.label }),
@@ -382,9 +419,10 @@
         return;
       }
       viewerList.removeAttribute('aria-busy');
-      const all = sourceList();
+      const groups = buildGroups(false);
+      const all = groupsCache ? groupsCache.visible : sourceList();
       const rows = [{ id: ALL, label: state.matches ? t('All matches') : t('All entries'), count: all.length }];
-      for (const g of buildGroups(false)) rows.push({ id: g.id, label: g.label, count: g.items.length });
+      for (const g of groups) rows.push({ id: g.id, label: g.label, count: g.items.length });
       if (!rows.some((r) => r.id === state.viewer)) state.viewer = ALL;
       viewerList.replaceChildren(...rows.map(viewerRow));
     }
@@ -392,7 +430,7 @@
     function renderControls() {
       typeBar.replaceChildren(...TYPES.map(([id, label]) => h('button', {
         class: 'fd-seg-btn', type: 'button', 'aria-pressed': String(state.type === id),
-        onclick: () => { state.type = id; render(); },
+        onclick: () => { state.type = id; state.listLimit = 250; render(); },
       }, t(label))));
       viewerSort.value = state.viewSort;
       entrySort.value = state.entrySort;
@@ -455,12 +493,30 @@
       if (!groups.length || !shown) { mainList.replaceChildren(emptyState()); return; }
       const cmp = ENTRY_CMP[state.entrySort] || ENTRY_CMP['key-asc'];
       const nodes = [];
+      let rendered = 0;
+      let remaining = 0;
       for (const g of groups) {
+        const slots = state.listLimit - rendered;
+        if (slots <= 0) { remaining += g.items.length; continue; }
+        // Sort groups only as they are needed for the current page. Large databases
+        // with many viewers no longer sort every viewer's entries before showing 250 rows.
+        if (g.sortedBy !== state.entrySort) {
+          g.sortedItems = [...g.items].sort(cmp);
+          g.sortedBy = state.entrySort;
+        }
+        const items = g.sortedItems;
+        const take = Math.min(items.length, slots);
         nodes.push(h('div', { class: `fd-group-head${g.id === SHARED ? ' shared' : ''}`, role: 'presentation' },
           h('span', { class: 'fd-group-name', text: g.label }),
           h('span', { class: 'fd-count', text: String(g.items.length) })));
-        for (const e of [...g.items].sort(cmp)) nodes.push(entryRow(e));
+        for (let index = 0; index < take; index++) nodes.push(entryRow(items[index]));
+        rendered += take;
+        remaining += items.length - take;
       }
+      if (remaining > 0) nodes.push(h('button', {
+        class: 'fd-load-more', type: 'button',
+        onclick: () => { state.listLimit += 250; renderList(); },
+      }, t('Load {count} more entries', { count: Math.min(250, remaining) })));
       mainList.replaceChildren(...nodes);
     }
 
@@ -584,6 +640,7 @@
       }
       if (state.selected) closeEditorState();
       state.query = value;
+      state.listLimit = 250;
       clearTimeout(searchTimer);
       const q = value.trim();
       if (q.length < SEARCH_MIN) {
@@ -611,6 +668,7 @@
       } else {
         const now = Date.now();
         state.matches = (reply.matches || []).map((m) => ({ ...m, expired: m.expires != null && m.expires <= now }));
+        state.listLimit = 250;
         setStatus('');
       }
       render();
@@ -630,9 +688,12 @@
       state.loaded = true;
       if (!reply.ok) {
         state.entries = [];
+        groupsCache = null;
         setStatus(reply.error, 'bad');
       } else {
         state.entries = reply.items || [];
+        state.listLimit = 250;
+        groupsCache = null;
         state.dbPath = reply.dbPath || '';
         setStatus('');
       }

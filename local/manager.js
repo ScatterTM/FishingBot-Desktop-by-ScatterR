@@ -1088,10 +1088,10 @@ let vtPendingImport=null;
 // accents or spacing, so an exact-match miss no longer falls back to Common.
 // When the name is not in the catalogue, the [RARITY] suffix decides the label
 // and the item is marked as unmatched so it can be checked.
-function normName(v){return String(v??'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').replace(/[\\u2018\\u2019]/g,\"'\").replace(/\\s+/g,' ').trim().toLowerCase();}
-function parseInvItem(raw){const text=String(raw??'').trim();const m=text.match(/^(.*?)\\s*[\\[(]([^\\[\\]()]+)[\\])]\\s*$/);const label=m?m[2].trim().toLowerCase():'';const suffix=m&&settings.tiers.find(t=>t.id===label||String(t.name).toLowerCase()===label);return suffix?{name:m[1].trim(),suffixId:suffix.id}:{name:text,suffixId:''};}
+function normName(v){return String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019]/g,"'").replace(/\s+/g,' ').trim().toLowerCase();}
+function parseInvItem(raw){const text=String(raw??'').trim();const m=text.match(/^(.*?)\s*(?:\[([^\[\]()]+)\]|\(([^()]*)\))\s*$/i);const label=m?String(m[2]??m[3]??'').trim().toLowerCase():'';const suffix=m&&settings.tiers.find(t=>t.id===label||String(t.name).toLowerCase()===label);return suffix?{name:m[1].trim(),suffixId:suffix.id}:{name:text,suffixId:''};}
 function invRarity(raw){const parsed=parseInvItem(raw);const want=normName(parsed.name);const byName=settings.tiers.find(t=>(t.items||[]).some(i=>normName(i)===want));if(byName)return byName.id;return parsed.suffixId||'unmatched';}
-function baseFishName(item){const text=String(item||'');const at=text.indexOf(' [');return (at>0?text.slice(0,at):text).trim();}
+function baseFishName(item){const text=String(item||'').trim();const parsed=parseInvItem(text);return parsed.suffixId?parsed.name:text;}
 function viewerLogin(){const v=(document.getElementById('vt-login')?.value||'').trim().replace(/^@+/,'').toLowerCase();if(!/^[a-z0-9_]{1,25}$/.test(v))throw new Error('Enter a valid Twitch login (letters, numbers and underscores).');return v;}
 async function guard(task){try{await task();}catch(e){notice(e.message,'error');}}
 function lootOptions(){return settings.tiers.map(t=>'<optgroup label="'+esc(t.name)+'">'+t.items.map(i=>'<option value="'+esc(i)+'">'+esc(i)+'</option>').join('')+'</optgroup>').join('');}

@@ -169,7 +169,7 @@
 
   function translateElement(el) {
     if (!el || !el.getAttribute) return;
-    for (const attr of ['placeholder', 'title', 'aria-label', 'aria-description', 'alt']) {
+    for (const attr of ['placeholder', 'title', 'aria-label', 'aria-description', 'alt', 'data-tip', 'data-tooltip', 'data-description', 'data-hint']) {
       if (!el.hasAttribute(attr)) continue;
       el.__fbI18nAttributes = el.__fbI18nAttributes || {};
       if (!Object.prototype.hasOwnProperty.call(el.__fbI18nAttributes, attr)) {
@@ -240,14 +240,30 @@
   // All renderers (including the Control Centre's innerHTML templates) flow through this observer.
   // Text/attribute source is kept once, so a render or language switch can't translate the translation.
   if (typeof MutationObserver !== 'undefined') {
+    const descriptiveAttributes = ['placeholder', 'title', 'aria-label', 'aria-description', 'alt', 'data-tip', 'data-tooltip', 'data-description', 'data-hint'];
     new MutationObserver(records => {
       for (const record of records) {
+        if (record.type === 'attributes') {
+          const el = record.target;
+          const attr = record.attributeName;
+          const source = el.__fbI18nAttributes && el.__fbI18nAttributes[attr];
+          if (source !== undefined) {
+            const space = splitWhitespace(source);
+            const expected = space.before + translateString(space.core) + space.after;
+            // Detect a newly rendered description/title and adopt it as the source phrase.
+            if (el.getAttribute(attr) !== expected) delete el.__fbI18nAttributes[attr];
+          }
+          translateElement(el);
+          continue;
+        }
         for (const node of record.addedNodes) {
           if (node.nodeType === 1) applyExplicit(node);
           translateTree(node);
         }
       }
-    }).observe(document.documentElement, { childList: true, subtree: true });
+    }).observe(document.documentElement, {
+      childList: true, subtree: true, attributes: true, attributeFilter: descriptiveAttributes,
+    });
   }
 
   global.FishingbotI18n = {

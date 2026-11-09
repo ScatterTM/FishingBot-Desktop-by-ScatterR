@@ -182,9 +182,15 @@
         <section class="widget" aria-labelledby="s-startup">
           <h2 class="w-title" id="s-startup">Startup</h2>
           <form class="form" data-section="startup">
-            <label class="check"><input type="checkbox" name="startOnPc"> Start Fishingbot Desktop when Windows starts</label>
-            <label class="check"><input type="checkbox" name="startWhenObsStarts"> Start the server when OBS starts</label>
-            <p class="hint">This option starts Fishingbot Desktop minimized at Windows sign-in so it can watch for OBS. With this option on and “Start Fishingbot Desktop when Windows starts” off, the server waits until OBS opens. Closing the window minimizes it while the watcher is on; use Quit to exit. To have OBS launch Fishingbot when the desktop is not already running, add <code>obs-scripts/fishingbot-autostart.lua</code> once under OBS Tools → Scripts. Its executable path can be auto-detected.</p>
+            <label class="check"><input type="checkbox" name="startOnPc"> Launch Fishingbot Desktop with Windows</label>
+            <label class="check"><input type="checkbox" name="startWhenObsStarts"> Start the server when OBS opens</label>
+            <div class="startup-info-row">
+              <button class="info-tip" type="button" aria-label="Startup options information" aria-description="Starts Fishingbot Desktop minimized when you sign in, so it can watch for OBS. When this watcher is enabled, closing the window minimizes it; choose Quit to exit completely. To launch Fishingbot directly from OBS instead, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically." title="Startup options information" data-tip="Starts Fishingbot Desktop minimized when you sign in, so it can watch for OBS. When this watcher is enabled, closing the window minimizes it; choose Quit to exit completely. To launch Fishingbot directly from OBS instead, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically.">i</button>
+            </div>
+            <div class="startup-downloads">
+              <button class="btn" id="download-obs-lua" type="button">Download OBS Lua</button>
+              <button class="btn" id="download-obs-setup" type="button">Download setup ZIP</button>
+            </div>
           </form>
         </section>
 

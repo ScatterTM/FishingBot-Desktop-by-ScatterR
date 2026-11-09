@@ -257,6 +257,21 @@ function hardenWebview(event, webPreferences, params) {
 function blockNonWebNavigation(event, url) {
   if (!isWebUrl(url) && url !== 'about:blank') event.preventDefault();
 }
+function isTwitchActivationUrl(value) {
+  try {
+    const target = new URL(value);
+    return target.protocol === 'https:'
+      && ['twitch.tv', 'www.twitch.tv'].includes(target.hostname.toLowerCase())
+      && /^\/activate\/?$/i.test(target.pathname);
+  } catch {
+    return false;
+  }
+}
+function openTwitchActivation(value) {
+  if (!isTwitchActivationUrl(value)) return false;
+  shell.openExternal(value).catch((error) => startupLog(`Could not open Twitch activation: ${error.message}`));
+  return true;
+}
 
 function registerAuthIpc(server, admin) {
   handleTrusted('auth:state', safe(() => authState(server)));
@@ -461,6 +476,33 @@ function registerIpc(server, admin) {
   );
 
   handleTrusted('settings:get', () => settings.view(ROOT));
+  handleTrusted('download:asset', safe(async (kind) => {
+    const assets = {
+      'obs-lua': {
+        source: path.join(ROOT, 'obs-scripts', 'fishingbot-autostart.lua'),
+        name: 'fishingbot-autostart.lua',
+        title: tr('Save OBS startup script'),
+        filters: [{ name: tr('Lua script'), extensions: ['lua'] }],
+      },
+      'obs-setup-zip': {
+        source: path.join(ROOT, 'downloads', 'Fishingbot-OBS-Startup-Setup.zip'),
+        name: 'Fishingbot-OBS-Startup-Setup.zip',
+        title: tr('Save OBS setup ZIP'),
+        filters: [{ name: tr('ZIP archive'), extensions: ['zip'] }],
+      },
+    };
+    const asset = assets[String(kind || '')];
+    if (!asset) throw new Error('Unknown download.');
+    if (!fs.existsSync(asset.source)) throw new Error(`The download file is missing: ${asset.name}`);
+    const choice = await dialog.showSaveDialog(mainWin, {
+      title: asset.title,
+      defaultPath: path.join(app.getPath('downloads'), asset.name),
+      filters: asset.filters,
+    });
+    if (choice.canceled || !choice.filePath) return { cancelled: true };
+    await fs.promises.copyFile(asset.source, choice.filePath);
+    return { savedPath: choice.filePath };
+  }));
   // Backups: the list in data/backups, and "Back up now" (the server makes the copy on its next check).
   handleTrusted('backup:list', safe(async () => {
     const dir = path.join(ROOT, 'data', 'backups');
@@ -971,9 +1013,19 @@ async function main() {
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() !== 'webview') return;
     denyPermissions(contents.session);
-    contents.on('will-navigate', blockNonWebNavigation);
-    contents.on('will-redirect', blockNonWebNavigation);
+    contents.on('will-navigate', (event, url) => {
+      // Some Twitch builds navigate the current webview instead of calling window.open.
+      // Device approval must leave the embedded view, or Twitch silently blocks the flow.
+      if (openTwitchActivation(url)) { event.preventDefault(); return; }
+      blockNonWebNavigation(event, url);
+    });
+    contents.on('will-redirect', (event, url) => {
+      if (openTwitchActivation(url)) { event.preventDefault(); return; }
+      blockNonWebNavigation(event, url);
+    });
     contents.setWindowOpenHandler(({ url }) => {
+      // Other Twitch builds open the device approval page in a new window.
+      if (openTwitchActivation(url)) return { action: 'deny' };
       send('web:open', url);
       return { action: 'deny' };
     });

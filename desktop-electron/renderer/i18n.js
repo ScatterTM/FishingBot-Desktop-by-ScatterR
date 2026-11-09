@@ -3,7 +3,7 @@
 (() => {
   'use strict';
 
-  const ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'aria-description', 'alt'];
+  const ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'aria-description', 'alt', 'data-tip', 'data-tooltip', 'data-description', 'data-hint'];
   let dictionary = {};
   let language = 'en';
   let reverseExact = new Map();
@@ -178,12 +178,28 @@
     };
     new MutationObserver(records => {
       for (const record of records) {
+        if (record.type === 'attributes') {
+          const el = record.target;
+          const name = record.attributeName;
+          const source = el.__fbI18nAttributes && el.__fbI18nAttributes[name];
+          if (source !== undefined) {
+            const space = splitWhitespace(source);
+            const expected = space.before + translation(space.core) + space.after;
+            // A renderer has supplied new source text. Keep that new value as the
+            // canonical phrase instead of translating the previous attribute again.
+            if (el.getAttribute(name) !== expected) delete el.__fbI18nAttributes[name];
+          }
+          pending.add(el);
+          continue;
+        }
         for (const node of record.addedNodes) {
           if (node.nodeType === 1 || node.nodeType === 3) pending.add(node);
         }
       }
       if (pending.size && !applyFrame) applyFrame = requestAnimationFrame(flush);
-    }).observe(document.documentElement, { childList: true, subtree: true });
+    }).observe(document.documentElement, {
+      childList: true, subtree: true, attributes: true, attributeFilter: ATTRIBUTES,
+    });
   }
 
   window.FishingbotI18n = Object.freeze({ load, setLanguage, apply, t, get language() { return language; } });

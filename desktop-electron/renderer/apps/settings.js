@@ -132,6 +132,30 @@
       status.classList.add('flash');
     }
 
+    // Downloadable OBS resources use the native Save dialog and report its result here.
+    q('#download-obs-lua').addEventListener('click', async () => {
+      say('Choose where to save the OBS startup script.', 'muted');
+      try {
+        const result = await api.downloadAsset('obs-lua');
+        if (!result.ok) return say(`Could not save the download: ${result.error || 'unknown error'}`, 'bad');
+        if (result.cancelled) return say('Download cancelled. No file was saved.', 'muted');
+        say('OBS startup script saved.');
+      } catch (error) {
+        say(`Could not save the download: ${error.message || 'unknown error'}`, 'bad');
+      }
+    });
+    q('#download-obs-setup').addEventListener('click', async () => {
+      say('Choose where to save the setup ZIP.', 'muted');
+      try {
+        const result = await api.downloadAsset('obs-setup-zip');
+        if (!result.ok) return say(`Could not save the download: ${result.error || 'unknown error'}`, 'bad');
+        if (result.cancelled) return say('Download cancelled. No file was saved.', 'muted');
+        say('Setup ZIP saved.');
+      } catch (error) {
+        say(`Could not save the download: ${error.message || 'unknown error'}`, 'bad');
+      }
+    });
+
     // Tabs: one pane visible at a time. Arrow keys move between tabs, as in the Windows dialogs.
     // Only the section tabs. The Appearance group buttons also have role="tab", but they belong to a
     // different row: when they were included, clicking one hid every pane (the page looked blank).
@@ -417,6 +441,9 @@
       importProgress.value = Math.max(0, Math.min(100, Number(status.percent) || 0));
       importCounts.textContent = `Processed ${processed.toLocaleString()} / ${total.toLocaleString()} rows · Succeeded ${Number(status.rowsSucceeded || 0).toLocaleString()} · Skipped ${Number(status.rowsSkipped || 0).toLocaleString()} · Failed ${Number(status.rowsFailed || 0).toLocaleString()} · ETA ${formatEta(status.etaMs)}`;
       importStatus.textContent = status.message || status.phase || 'Working…';
+      if (status.phase === 'completed') {
+        importStatus.textContent += ' The imported records are stored in data/fishing.sqlite; installer updates preserve the data folder.';
+      }
       importStatus.className = 'muted ' + (['failed', 'validation-failed'].includes(status.phase) ? 'bad' : '');
       showImportErrors(status.errors);
     }

@@ -177,3 +177,6 @@
 /* While a divider moves: the cursor stays a resize cursor, and the panes ignore the pointer (less work per move). */
 .fd-dragging, .fd-dragging * { cursor: col-resize !important; user-select: none !important; }
 .fd-dragging .fd-listcol, .fd-dragging .fd-editorcol, .fd-dragging .fd-side { pointer-events: none; }
+
+.fd-load-more { display: block; width: min(100%, 340px); margin: 12px auto 18px; padding: 10px 14px; border: 1px solid var(--line2); border-radius: 8px; background: var(--panel2); color: var(--ink); cursor: pointer; }
+.fd-load-more:hover { border-color: var(--orange2); }
