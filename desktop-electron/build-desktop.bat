@@ -38,6 +38,15 @@ if not exist "%DIST%\Fishingbot.exe" (echo dist\Fishingbot.exe is missing after 
 rem A plain icon file next to the app. Shortcuts use it, so they show the icon even if the EXE icon is missing.
 copy /y "renderer\assets\app.ico" "%DIST%\app.ico" >nul
 if errorlevel 1 (echo Copying app.ico to dist failed. & goto :fail)
+rem Ship the OBS script beside the app when this build script is run without build.bat.
+if not exist "%DIST%\obs-scripts" mkdir "%DIST%\obs-scripts"
+copy /y "%ROOT%\obs-scripts\fishingbot-autostart.lua" "%DIST%\obs-scripts\" >nul
+if errorlevel 1 (echo Copying OBS auto-start script failed. & goto :fail)
+if not exist "%DIST%\lib" mkdir "%DIST%\lib"
+copy /y "%ROOT%\lib\db-manager-worker.mjs" "%DIST%\lib\" >nul
+if errorlevel 1 (echo Copying database worker failed. & goto :fail)
+copy /y "%ROOT%\lib\db-import-worker.mjs" "%DIST%\lib\" >nul
+if errorlevel 1 (echo Copying database import worker failed. & goto :fail)
 
 echo Desktop app built: %DIST%\Fishingbot.exe
 exit /b 0

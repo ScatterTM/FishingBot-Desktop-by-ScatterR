@@ -54,7 +54,7 @@ To run from source: `desktop-electron\Start-Desktop.bat`.
 
 | File | Role |
 |------|------|
-| `main.js` | Main window, server lifecycle, IPC, settings, updates, OBS trigger |
+| `main.js` | Main window, server lifecycle, IPC, settings, updates, explicit Windows login startup |
 | `server-manager.js` | Starts or attaches to the server (`OPEN_BROWSER=0`), polls `/local/status`, restarts on exit code 75 |
 | `admin.js` | Admin API calls with login cookie and Origin header |
 | `settings.js` | `data/app-settings.json` and `.env` values (same defaults and limits as the server) |
@@ -84,6 +84,10 @@ A crash is written to `crash.log` in the same folder.
 The server needs Node.js 22.5 or newer, because it uses `node:sqlite`. Electron's own Node is too
 old, so the server always runs with a system Node. An installed build uses `FishingbotServer.exe`
 instead when it is next to the app.
+
+## OBS launch
+
+OBS launching is controlled by `obs-scripts/fishingbot-autostart.lua`, not the Windows login checkbox. Add it from OBS **Tools → Scripts**, choose `Fishingbot.exe`, and see [`docs/OBS-SETUP.md`](../docs/OBS-SETUP.md). `Start Fishingbot Desktop when Windows starts` affects Windows sign-in only.
 
 ## Known gaps
 

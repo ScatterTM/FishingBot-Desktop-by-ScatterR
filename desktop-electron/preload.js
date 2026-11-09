@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('fishingbot', {
   reconnectTwitch: () => ipcRenderer.invoke('twitch:reconnect'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (section, values) => ipcRenderer.invoke('settings:save', section, values),
+  downloadObsBundle: () => ipcRenderer.invoke('obs:download-bundle'),
   setUpdateRepository: (payload) => ipcRenderer.invoke('admin:repository', payload),
   changeAdminPassword: (payload) => ipcRenderer.invoke('admin:password', payload),
   generatePairingCode: (payload) => ipcRenderer.invoke('admin:pairCode', payload),
@@ -65,4 +66,8 @@ contextBridge.exposeInMainWorld('fishingbot', {
   dbRead: (key, kind) => ipcRenderer.invoke('db:read', { key, kind }),
   dbSave: (payload) => ipcRenderer.invoke('db:save', payload),
   dbSearch: (payload) => ipcRenderer.invoke('db:search', payload),
+  dbImportChoose: () => ipcRenderer.invoke('db-import:choose'),
+  dbImportStart: (payload) => ipcRenderer.invoke('db-import:start', payload),
+  dbImportStatus: (payload) => ipcRenderer.invoke('db-import:status', payload),
+  dbImportCancel: (payload) => ipcRenderer.invoke('db-import:cancel', payload),
 });

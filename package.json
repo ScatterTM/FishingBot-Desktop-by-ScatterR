@@ -1,7 +1,7 @@
 {
   "name": "fishingbot",
-  "version": "1.0.4-beta",
-  "description": "Fishingbot v1.0.4 Beta - local-first Twitch fishing game with a unified control hub and map-first Twitch Extension.",
+  "version": "1.0.6-beta",
+  "description": "Fishingbot v1.0.6 Beta - local-first Twitch fishing game with a unified control hub and map-first Twitch Extension.",
   "dependencies": {
     "mathjs": "^12.4.0"
   },
@@ -10,6 +10,8 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning local/launcher.js"
+    "start": "node --disable-warning=ExperimentalWarning local/launcher.js",
+    "check": "node --check local/manager.js && node --check local/chat-commands.js && node --check local/twitch-bot.js && node --check lib/db-import-worker.mjs && npm --prefix desktop-electron run check",
+    "test": "node --test tests/*.test.mjs"
   }
 }

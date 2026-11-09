@@ -18,13 +18,14 @@ import { RELEASE_CONFIG } from './release-config.js';
 import { readChatSettings, takeAnnouncements } from '../lib/chat-settings.js';
 
 const ACCOUNT_KEY = 'local:bot:account';
-const SCOPES = ['user:read:chat', 'user:write:chat'];
+const SCOPES = ['user:read:chat', 'user:write:chat', 'user:manage:whispers'];
 const TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
 const VALIDATE_URL = 'https://id.twitch.tv/oauth2/validate';
 const REVOKE_URL = 'https://id.twitch.tv/oauth2/revoke';
 const HELIX = 'https://api.twitch.tv/helix';
 const EVENTSUB_WS = 'wss://eventsub.wss.twitch.tv/ws';
 const SEND_INTERVAL_MS = 1100;      // stays well inside Twitch's chat rate limit
+const WHISPER_INTERVAL_MS = 750;    // below Twitch's 100/min whisper ceiling
 const FISH_TIMEOUT_MS = 15000;
 const WATCHDOG_MS = 15000;
 const STALE_AFTER_MS = 40000;       // EventSub keepalives normally arrive every ~10s
@@ -49,6 +50,10 @@ let watchdog = null;
 const pendingStates = new Map();
 const sendQueue = [];
 let sending = false;
+const whisperQueue = [];
+let sendingWhispers = false;
+let whisperDay = '';
+const whisperedRecipientsToday = new Set();
 
 // ---- Settings and token storage --------------------------------------------
 
@@ -650,12 +655,21 @@ export async function handleChatEvent(event) {
   }
 
   if (!isChatInfoCommand(text)) return;
-  console.log(`[bot] Chat info command from ${user}: ${text.split(/\s+/, 1)[0]}`);
-  const reply = await runChatInfoCommand({ text, user });
-  if (reply) {
-    console.log(`[bot] Replying: ${reply.slice(0, 80)}`);
-    enqueueChat(reply, event.message_id);
+  console.log(`[bot] Viewer management command from ${user}: ${text.split(/\s+/, 1)[0]}`);
+  const chatterId = String(event.chatter_user_id || '');
+  const replyMode = (await readChatSettings().catch(() => null))?.commandReplyMode || 'whisper';
+  if (replyMode !== 'chat' && !/^\d{1,30}$/.test(chatterId)) {
+    console.warn(`[bot] Cannot privately reply to ${user}: Twitch did not include a valid chatter ID.`);
+    return;
   }
+  const reply = await runChatInfoCommand({ text, user, userId: chatterId });
+  if (!reply) return;
+  if (replyMode === 'chat') {
+    // Public mode is opt-in and still uses the common rate-limited chat send queue.
+    enqueueChat(reply, String(event.message_id || ''));
+    return;
+  }
+  enqueueWhisper(chatterId, reply);
 }
 
 // ---- Sending chat -----------------------------------------------------------------
@@ -702,6 +716,60 @@ export async function sendChatMessage(text, replyParentMessageId = '') {
   }
   state.lastReplyAt = new Date().toISOString();
   if (item.message_id) rememberSent(item.message_id);
+  return true;
+}
+
+
+// Command replies default to Twitch Whispers; streamers can choose public chat in Game Settings.
+// Whisper mode enforces Twitch's 40 unique recipients/day limit plus a conservative send interval.
+export function enqueueWhisper(toUserId, text) {
+  const recipient = String(toUserId || '');
+  if (!/^\d{1,30}$/.test(recipient)) return;
+  if (whisperQueue.length >= 100) {
+    console.warn('[bot] Private-response queue is full; dropping a command response.');
+    return;
+  }
+  whisperQueue.push({ recipient, text: String(text || '').replace(/[\r\n]+/g, ' ').slice(0, 500) });
+  if (!sendingWhispers) drainWhispers();
+}
+
+async function drainWhispers() {
+  sendingWhispers = true;
+  while (whisperQueue.length) {
+    const item = whisperQueue.shift();
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      if (today !== whisperDay) { whisperDay = today; whisperedRecipientsToday.clear(); }
+      if (!whisperedRecipientsToday.has(item.recipient) && whisperedRecipientsToday.size >= 40) {
+        console.warn('[bot] Twitch daily unique-whisper recipient limit reached; command response was not sent.');
+      } else {
+        await sendWhisper(item.recipient, item.text);
+        whisperedRecipientsToday.add(item.recipient);
+      }
+    } catch (error) {
+      // Do not fall back to public chat: privacy is the command response contract.
+      console.error('[bot] Could not send private command response:', error?.message || error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, WHISPER_INTERVAL_MS));
+  }
+  sendingWhispers = false;
+}
+
+export async function sendWhisper(toUserId, text) {
+  if (!account) throw new Error('No bot account is connected.');
+  if (!account.scopes?.includes('user:manage:whispers')) {
+    throw new Error('Private command replies need the Twitch user:manage:whispers permission. Reconnect the Twitch bot account and grant the new permission.');
+  }
+  const recipient = String(toUserId || '');
+  const message = String(text || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 500);
+  if (!/^\d{1,30}$/.test(recipient) || !message) throw new Error('Invalid whisper recipient or message.');
+  const query = new URLSearchParams({ from_user_id: String(account.userId), to_user_id: recipient });
+  const result = await helix(`/whispers?${query.toString()}`, { method: 'POST', body: { message } });
+  if (!result.ok) {
+    const reason = result.data?.message || result.data?.error || `HTTP ${result.status}`;
+    throw new Error(`Twitch whisper failed (${reason}). The command was not posted publicly.`);
+  }
+  state.lastReplyAt = new Date().toISOString();
   return true;
 }
 

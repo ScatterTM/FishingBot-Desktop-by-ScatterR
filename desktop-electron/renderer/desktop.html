@@ -183,8 +183,13 @@
           <h2 class="w-title" id="s-startup">Startup</h2>
           <form class="form" data-section="startup">
             <label class="check"><input type="checkbox" name="startOnPc"> Start Fishingbot Desktop when Windows starts</label>
-            <label class="check"><input type="checkbox" name="startWhenObsStarts"> Start the server when OBS starts</label>
-            <p class="hint">Windows startup uses the current user account. Saved automatically.</p>
+            <p class="hint">Windows sign-in startup is independent from OBS. Leave this unchecked to prevent Fishingbot from starting when Windows logs in.</p>
+            <label class="check"><input type="checkbox" name="startWhenObsStarts"> Set up OBS auto-start (show script download)</label>
+            <p class="hint">When enabled, a download button appears below for a ZIP containing the OBS Lua script and its setup guide. After downloading, add the script using OBS → Tools → Scripts and select the Fishingbot executable.</p>
+            <div class="row" id="obs-script-download-row" hidden>
+              <button class="btn solid" type="button" id="download-obs-bundle">Download OBS script + guide</button>
+              <span class="muted" id="obs-script-download-status" role="status" aria-live="polite"></span>
+            </div>
           </form>
         </section>
 
@@ -583,6 +588,35 @@
             <span class="muted" id="backup-status" role="status"></span>
           </div>
           <dl class="kv" id="backup-list"></dl>
+        </section>
+
+        <section class="widget widget-wide" aria-labelledby="s-db-import">
+          <h2 class="w-title" id="s-db-import">Import an old database</h2>
+          <p class="hint">Restore a complete Fishingbot export from JSON, CSV, or SQL. The file is validated before writing; accepted rows are imported in batches inside one transaction. A pre-import database backup is created automatically when a database already exists.</p>
+          <div class="form form-inline">
+            <div>
+              <label>Export file</label>
+              <div class="row">
+                <button class="btn" type="button" id="db-import-choose">Choose file…</button>
+                <span class="muted" id="db-import-file">No file selected</span>
+              </div>
+            </div>
+            <label>Duplicate-key policy
+              <select id="db-import-policy">
+                <option value="prompt">Ask if duplicates are found</option>
+                <option value="skip">Skip existing keys</option>
+                <option value="overwrite">Overwrite existing keys</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <button class="btn solid" type="button" id="db-import-start" disabled>Validate and import</button>
+            <button class="btn" type="button" id="db-import-cancel" disabled>Cancel import</button>
+            <span class="muted" id="db-import-status" role="status" aria-live="polite">Choose a JSON, CSV, or SQL export to begin.</span>
+          </div>
+          <progress id="db-import-progress" max="100" value="0" aria-label="Database import progress"></progress>
+          <p class="hint" id="db-import-counts">Processed 0 rows · Succeeded 0 · Skipped 0 · Failed 0 · ETA —</p>
+          <ul class="import-errors" id="db-import-errors" aria-live="polite"></ul>
         </section>
 
         <section class="widget" aria-labelledby="s-limits">

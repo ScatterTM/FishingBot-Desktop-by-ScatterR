@@ -1115,3 +1115,10 @@ body.edit-layout .widgets > .widget:not(:hover) { animation: icon-jiggle 0.5s ea
 :root[data-perf="on"] *, :root[data-perf="on"] *::before, :root[data-perf="on"] *::after {
   backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transition: none !important; animation: none !important;
 }
+
+
+/* Security > database import: visible progress and bounded error details. */
+#db-import-progress { display: block; width: 100%; height: 12px; margin: 12px 0 8px; accent-color: var(--accent); }
+.import-errors { max-height: 150px; overflow: auto; margin: 8px 0 0; padding-left: 22px; color: var(--red, #ff7474); font-size: 12px; }
+.import-errors:empty { display: none; }
+.import-errors li { margin: 4px 0; overflow-wrap: anywhere; }

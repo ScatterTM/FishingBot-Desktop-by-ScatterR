@@ -369,6 +369,130 @@
       if (result.ok) setTimeout(renderBackups, 65000);
     });
     renderBackups();
+
+    // Full-database import: native file picker, server-side validation, progress polling and cancellation.
+    const importChoose = q('#db-import-choose');
+    const importStart = q('#db-import-start');
+    const importCancel = q('#db-import-cancel');
+    const importPolicy = q('#db-import-policy');
+    const importFile = q('#db-import-file');
+    const importStatus = q('#db-import-status');
+    const importProgress = q('#db-import-progress');
+    const importCounts = q('#db-import-counts');
+    const importErrors = q('#db-import-errors');
+    let importPath = null;
+    let activeImportId = null;
+    let importPollTimer = null;
+    let importDecisionPending = false;
+
+    function formatEta(ms) {
+      if (!Number.isFinite(Number(ms)) || ms < 0) return '—';
+      const seconds = Math.ceil(Number(ms) / 1000);
+      if (seconds < 60) return `${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m ${seconds % 60}s`;
+    }
+    function clearImportErrors() { importErrors.replaceChildren(); }
+    function showImportErrors(errors) {
+      importErrors.replaceChildren();
+      for (const error of (Array.isArray(errors) ? errors : []).slice(0, 100)) {
+        const item = document.createElement('li');
+        item.textContent = `${error.line ? `Line/row ${error.line}: ` : ''}${error.message || 'Import error.'}`;
+        importErrors.append(item);
+      }
+    }
+    function finishImportPolling() {
+      if (importPollTimer) clearTimeout(importPollTimer);
+      importPollTimer = null;
+      activeImportId = null;
+      importCancel.disabled = true;
+      importStart.disabled = !importPath;
+      importChoose.disabled = false;
+      importPolicy.disabled = false;
+    }
+    function renderImportStatus(status) {
+      if (!status) return;
+      const total = Number(status.rowsTotal) || 0;
+      const processed = Number(status.rowsProcessed) || 0;
+      importProgress.value = Math.max(0, Math.min(100, Number(status.percent) || 0));
+      importCounts.textContent = `Processed ${processed.toLocaleString()} / ${total.toLocaleString()} rows · Succeeded ${Number(status.rowsSucceeded || 0).toLocaleString()} · Skipped ${Number(status.rowsSkipped || 0).toLocaleString()} · Failed ${Number(status.rowsFailed || 0).toLocaleString()} · ETA ${formatEta(status.etaMs)}`;
+      importStatus.textContent = status.message || status.phase || 'Working…';
+      importStatus.className = 'muted ' + (['failed', 'validation-failed'].includes(status.phase) ? 'bad' : '');
+      showImportErrors(status.errors);
+    }
+    async function startDatabaseImport(policy) {
+      if (!importPath) return;
+      clearImportErrors();
+      importDecisionPending = false;
+      importStart.disabled = true;
+      importChoose.disabled = true;
+      importPolicy.disabled = true;
+      importCancel.disabled = false;
+      importStatus.textContent = 'Starting validation…';
+      const result = await api.dbImportStart({ path: importPath, policy });
+      if (!result.ok) {
+        finishImportPolling();
+        importStatus.textContent = result.error || 'Could not start database import.';
+        importStatus.className = 'muted bad';
+        return;
+      }
+      activeImportId = result.jobId;
+      renderImportStatus(result.status);
+      pollDatabaseImport();
+    }
+    async function pollDatabaseImport() {
+      if (!activeImportId) return;
+      const result = await api.dbImportStatus({ jobId: activeImportId });
+      if (!result.ok) {
+        finishImportPolling();
+        importStatus.textContent = result.error || 'Could not read import status.';
+        importStatus.className = 'muted bad';
+        return;
+      }
+      const status = result.status;
+      renderImportStatus(status);
+      if (status.phase === 'needs-confirmation' && !importDecisionPending) {
+        importDecisionPending = true;
+        const conflictSamples = (status.duplicateSamples || []).join(', ');
+        const overwrite = window.confirm(`${status.duplicateCount} duplicate key(s) were found in the imported file or current database.${conflictSamples ? ` Examples: ${conflictSamples}.` : ''}
+
+Choose OK to overwrite duplicates (latest value wins), or Cancel to skip existing keys and keep the first imported value.`);
+        finishImportPolling();
+        importProgress.value = 0;
+        if (overwrite) await startDatabaseImport('overwrite');
+        else await startDatabaseImport('skip');
+        return;
+      }
+      if (['completed', 'failed', 'validation-failed', 'cancelled'].includes(status.phase)) {
+        finishImportPolling();
+        if (status.backupPath) importStatus.textContent += ` Backup: ${status.backupPath}`;
+        return;
+      }
+      importPollTimer = setTimeout(pollDatabaseImport, 500);
+    }
+    importChoose.addEventListener('click', async () => {
+      const result = await api.dbImportChoose();
+      if (!result.ok) { importStatus.textContent = result.error || 'Could not open file picker.'; importStatus.className = 'muted bad'; return; }
+      if (result.canceled) return;
+      importPath = result.path;
+      importFile.textContent = `${result.name} (${Math.max(1, Math.round((result.size || 0) / 1024)).toLocaleString()} KB)`;
+      importFile.title = result.path;
+      importStart.disabled = false;
+      importStatus.textContent = 'File selected. Validate before importing.';
+      importStatus.className = 'muted';
+      importProgress.value = 0;
+      importCounts.textContent = 'Processed 0 rows · Succeeded 0 · Skipped 0 · Failed 0 · ETA —';
+      clearImportErrors();
+    });
+    importStart.addEventListener('click', () => startDatabaseImport(importPolicy.value));
+    importCancel.addEventListener('click', async () => {
+      if (!activeImportId) return;
+      importCancel.disabled = true;
+      importStatus.textContent = 'Cancellation requested; waiting for the current batch to roll back…';
+      const result = await api.dbImportCancel({ jobId: activeImportId });
+      if (!result.ok) { importStatus.textContent = result.error || 'Could not cancel import.'; importStatus.className = 'muted bad'; }
+    });
+
     q('#appearance-undo').addEventListener('click', async () => {
       const result = await api.undoAppearance();
       if (!result.ok) return say(result.error, 'bad');
@@ -398,6 +522,37 @@
         document.dispatchEvent(new CustomEvent('fishingbot:language', { detail: language }));
       }
     }
+    // OBS startup is managed by a script loaded by OBS itself, not Windows login.
+    // The checkbox only reveals the downloadable package; users still add the Lua file in OBS.
+    const obsStartupCheckbox = body.querySelector('input[name="startWhenObsStarts"]');
+    const obsDownloadRow = q('#obs-script-download-row');
+    const obsDownloadButton = q('#download-obs-bundle');
+    const obsDownloadStatus = q('#obs-script-download-status');
+    const syncObsDownloadRow = () => {
+      if (obsDownloadRow) obsDownloadRow.hidden = !obsStartupCheckbox?.checked;
+    };
+    obsStartupCheckbox?.addEventListener('change', syncObsDownloadRow);
+    obsDownloadButton?.addEventListener('click', async () => {
+      if (!obsDownloadButton) return;
+      obsDownloadButton.disabled = true;
+      if (obsDownloadStatus) obsDownloadStatus.textContent = 'Preparing download…';
+      try {
+        const result = await api.downloadObsBundle();
+        if (!result.ok) throw new Error(result.error || 'Could not prepare the OBS setup bundle.');
+        if (result.cancelled) {
+          if (obsDownloadStatus) obsDownloadStatus.textContent = 'Download cancelled.';
+          return;
+        }
+        if (obsDownloadStatus) obsDownloadStatus.textContent = `Saved ${result.filePath}`;
+        say('OBS script and setup guide saved. Follow the guide inside the ZIP to add it in OBS.');
+      } catch (error) {
+        if (obsDownloadStatus) obsDownloadStatus.textContent = error.message || 'Download failed.';
+        say(error.message || 'Could not download the OBS setup bundle.', 'bad');
+      } finally {
+        obsDownloadButton.disabled = false;
+      }
+    });
+
     body.querySelectorAll('form[data-section]:not([data-action]):not([data-section="appearance"])').forEach((form) => {
       let timer = null;
       const queue = () => {
@@ -551,6 +706,7 @@
       .then((data) => {
         language = data.interface && data.interface.language;
         body.querySelectorAll('form[data-section]').forEach((form) => fill(form, data));
+        syncObsDownloadRow();
         renderFolderViewers(data.folder ? data.folder.viewers : []);
         if (dropdowns) dropdowns.refreshAll(body);
       })

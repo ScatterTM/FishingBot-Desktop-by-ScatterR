@@ -7,7 +7,6 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu, powerMonitor, screen, session, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFile } = require('node:child_process');
 const { ServerManager } = require('./server-manager');
 const { AdminClient } = require('./admin');
 const { TABS, TAB_IDS } = require('./tabs');
@@ -50,7 +49,6 @@ const ROOT = path.resolve(
     (app.isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '..')),
 );
 
-const OBS_PROCESSES = ['obs64.exe', 'obs32.exe'];
 // Set when the app is really quitting (before-quit). Closing the window while the OBS start is on only minimises it.
 let appQuitting = false;
 const SECTION_KEYS = {
@@ -95,18 +93,6 @@ function safe(fn) {
   };
 }
 
-function processRunning(names) {
-  return Promise.all(
-    names.map(
-      (name) =>
-        new Promise((resolve) => {
-          execFile('tasklist', ['/FI', `IMAGENAME eq ${name}`, '/NH'], { windowsHide: true }, (err, stdout) => {
-            resolve(!err && String(stdout).toLowerCase().includes(name));
-          });
-        }),
-    ),
-  ).then((results) => results.some(Boolean));
-}
 
 // ---- sign-in: one admin sign-in unlocks every app ----
 // The Control Centre pages run in <webview> tags that share this session partition, so the
@@ -253,7 +239,9 @@ function applySettings(section, server) {
   const view = settings.view(ROOT);
   if (section === 'startup') {
     app.setLoginItemSettings({
-      openAtLogin: view.startup.startOnPc || view.startup.startWhenObsStarts,
+      // System startup is controlled only by the explicit Windows checkbox.
+      // OBS startup is managed by obs-scripts/fishingbot-autostart.lua.
+      openAtLogin: view.startup.startOnPc,
       path: process.execPath,
     });
   }
@@ -389,6 +377,7 @@ function tr(key, vars) {
 
 const { systemUsage } = require('./system-usage');
 const { createDbManager } = require('./db-manager');
+const { createDbImportManager } = require('./db-import-manager');
 
 function registerIpc(server, admin) {
   handleTrusted('app:strings', () => ({ dictionary: STRINGS }));
@@ -415,6 +404,20 @@ function registerIpc(server, admin) {
   );
 
   handleTrusted('settings:get', () => settings.view(ROOT));
+  handleTrusted('obs:download-bundle', safe(async () => {
+    const bundlePath = app.isPackaged
+      ? path.join(process.resourcesPath, 'Fishingbot-OBS-Setup.zip')
+      : path.join(__dirname, 'obs-download', 'Fishingbot-OBS-Setup.zip');
+    if (!fs.existsSync(bundlePath)) throw new Error('The OBS setup bundle is missing from this installation. Reinstall or use the full source package.');
+    const result = await dialog.showSaveDialog(mainWin, {
+      title: 'Download Fishingbot OBS script and setup guide',
+      defaultPath: path.join(app.getPath('downloads'), 'Fishingbot-OBS-Setup.zip'),
+      filters: [{ name: 'ZIP archive', extensions: ['zip'] }]
+    });
+    if (result.canceled || !result.filePath) return { cancelled: true };
+    fs.copyFileSync(bundlePath, result.filePath);
+    return { cancelled: false, filePath: result.filePath };
+  }));
   // Backups: the list in data/backups, and "Back up now" (the server makes the copy on its next check).
   handleTrusted('backup:list', safe(async () => {
     const dir = path.join(ROOT, 'data', 'backups');
@@ -439,6 +442,11 @@ function registerIpc(server, admin) {
   handleTrusted('db:read', safe((payload) => dbManager.read(payload)));
   handleTrusted('db:save', safe((payload) => dbManager.save(payload)));
   handleTrusted('db:search', safe((payload) => dbManager.search(payload)));
+  const dbImportManager = createDbImportManager({ root: ROOT, server, getWindow: () => mainWin });
+  handleTrusted('db-import:choose', safe(() => dbImportManager.chooseFile()));
+  handleTrusted('db-import:start', safe((payload) => dbImportManager.start(payload?.path, payload?.policy || 'prompt')));
+  handleTrusted('db-import:status', safe((payload) => ({ status: dbImportManager.getStatus(payload?.jobId) })));
+  handleTrusted('db-import:cancel', safe((payload) => dbImportManager.cancel(payload?.jobId)));
   // Dropdown script and CSS, injected into Control Centre pages (their selects get glass lists too).
   handleTrusted('web:assets', () => ({
     dropdownJs: fs.readFileSync(path.join(__dirname, 'renderer', 'dropdown.js'), 'utf8'),
@@ -607,23 +615,6 @@ function registerAppearanceIpc(server) {
       return { wallpaper: null, settings: settings.view(ROOT) };
     }),
   );
-}
-
-// Starts the server when OBS starts (a transition from not running to running).
-function watchObs(server) {
-  let previous = false;
-  return setInterval(async () => {
-    if (!settings.view(ROOT).startup.startWhenObsStarts) {
-      previous = false;
-      return;
-    }
-    const running = await processRunning(OBS_PROCESSES);
-    if (running && !previous && !server.state.online && !server.child) {
-      server.addLog('APP', 'OBS started. Starting the Fishingbot server.', 'ok');
-      server.start().catch(() => {});
-    }
-    previous = running;
-  }, 15000);
 }
 
 // Offline editors: each one is its own window that uses the Control Centre look.
@@ -849,6 +840,16 @@ async function main() {
   await app.whenReady();
   clearTimeout(slowStart);
   startupLog('Electron is ready.');
+  // Synchronize the OS login registration from the persisted checkbox on every app launch.
+  // This also clears stale registrations created by older builds that conflated OBS startup
+  // with Windows sign-in startup.
+  try {
+    const startOnPc = Boolean(settings.view(ROOT).startup.startOnPc);
+    app.setLoginItemSettings({ openAtLogin: startOnPc, path: process.execPath });
+    startupLog(`Windows sign-in startup ${startOnPc ? 'enabled' : 'disabled'} from saved setting.`);
+  } catch (error) {
+    startupLog(`Could not synchronize Windows sign-in startup setting: ${error.message}`);
+  }
   app.setAppUserModelId('com.fishingbot.desktop');
   Menu.setApplicationMenu(null);
   // Windows locking (Win+L) or sleep: the desktop locks too, if the Security setting is on.
@@ -895,7 +896,6 @@ async function main() {
   mainWin = createMainWindow(path.join(__dirname, 'preload.js'), path.join(__dirname, 'renderer'));
   startupLog('Main window created.');
   server.begin();
-  const obsTimer = watchObs(server);
 
   setTimeout(() => {
     const view = settings.view(ROOT);
@@ -913,7 +913,6 @@ async function main() {
     if (quitting) return;
     event.preventDefault();
     quitting = true;
-    clearInterval(obsTimer);
     server.dispose();
     server
       .stop()
