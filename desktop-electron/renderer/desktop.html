@@ -183,7 +183,8 @@
           <h2 class="w-title" id="s-startup">Startup</h2>
           <form class="form" data-section="startup">
             <label class="check"><input type="checkbox" name="startOnPc"> Start Fishingbot Desktop when Windows starts</label>
-            <p class="hint">Only this checkbox registers Fishingbot with Windows login. OBS startup is separate: add <code>obs-scripts/fishingbot-autostart.lua</code> under OBS Tools → Scripts and configure the executable path there.</p>
+            <label class="check"><input type="checkbox" name="startWhenObsStarts"> Start the server when OBS starts</label>
+            <p class="hint">This option starts Fishingbot Desktop minimized at Windows sign-in so it can watch for OBS. With this option on and “Start Fishingbot Desktop when Windows starts” off, the server waits until OBS opens. Closing the window minimizes it while the watcher is on; use Quit to exit. To have OBS launch Fishingbot when the desktop is not already running, add <code>obs-scripts/fishingbot-autostart.lua</code> once under OBS Tools → Scripts. Its executable path can be auto-detected.</p>
           </form>
         </section>
 

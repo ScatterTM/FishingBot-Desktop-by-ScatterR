@@ -64,10 +64,11 @@ class ServerManager extends EventEmitter {
     this.state = { state: 'stopped', online: false, startedAt: null, pid: null, error: null, twitch: null };
   }
 
-  // Called once at startup: begin polling, then start (or attach to) the server.
-  begin() {
+  // Called once at startup: begin polling, and optionally start (or attach to) the server.
+  // OBS-watcher mode passes autoStart:false so OBS controls when the service launches.
+  begin({ autoStart = true } = {}) {
     this.timer = setInterval(() => this.poll(), POLL_MS);
-    this.start();
+    if (autoStart) this.start();
   }
 
   dispose() {

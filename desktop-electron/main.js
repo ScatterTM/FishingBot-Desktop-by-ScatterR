@@ -5,6 +5,7 @@
 // inside the desktop page, so there is one native window.
 
 const { app, BrowserWindow, dialog, ipcMain, Menu, powerMonitor, screen, session, shell } = require('electron');
+const { execFile } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { ServerManager } = require('./server-manager');
@@ -49,6 +50,23 @@ const ROOT = path.resolve(
     (app.isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '..')),
 );
 
+// The Startup setting also supports the legacy background watcher: if enabled, the desktop
+// registers to start at sign-in (minimised) and starts the server on an OBS process transition.
+// The dedicated OBS Lua script remains available when the user wants OBS itself to launch the app.
+const OBS_PROCESSES = ['obs64.exe', 'obs32.exe'];
+function processRunning(names) {
+  if (process.platform !== 'win32') return Promise.resolve(false);
+  return Promise.all(names.map((name) => new Promise((resolve) => {
+    execFile('tasklist', ['/FI', `IMAGENAME eq ${name}`, '/NH'], {
+      windowsHide: true,
+      timeout: 5000,
+      maxBuffer: 64 * 1024,
+    }, (error, stdout) => {
+      resolve(!error && String(stdout || '').toLowerCase().includes(name.toLowerCase()));
+    });
+  }))).then((results) => results.some(Boolean));
+}
+
 // Merge the desktop dictionary with the shared browser/Control Centre catalogs. This keeps a
 // single language choice useful in desktop menus, dialogs, server pages, and dynamic notifications.
 function loadUiStrings(root, desktopStrings) {
@@ -80,6 +98,7 @@ const STRINGS = loadUiStrings(ROOT, DESKTOP_STRINGS);
 
 // Set when the app is really quitting (before-quit). Closing the window while the OBS start is on only minimises it.
 let appQuitting = false;
+let stopObsWatcher = null;
 const SECTION_KEYS = {
   interface: ['language', 'autoScrollLog', 'confirmStopServer'],
   security: ['sessionTimeoutMinutes', 'autoLockMinutes', 'lockOnWindowsLock', 'backupIntervalHours', 'backupKeep'],
@@ -269,11 +288,12 @@ function applySettings(section, server) {
   const view = settings.view(ROOT);
   if (section === 'startup') {
     app.setLoginItemSettings({
-      // System startup is controlled only by the explicit Windows checkbox.
-      // OBS startup is managed by obs-scripts/fishingbot-autostart.lua.
-      openAtLogin: view.startup.startOnPc,
+      // Either explicit Startup option may register a sign-in launch: the Windows option starts
+      // normally, while the OBS watcher starts minimised and waits for OBS before starting the server.
+      openAtLogin: view.startup.startOnPc || view.startup.startWhenObsStarts,
       path: process.execPath,
     });
+    syncObsWatcher(server, view.startup.startWhenObsStarts);
   }
   if (section === 'performance') server.ramLimitMb = view.performance.ramLimitMb;
   if (section === 'appearance') applyUiScale(mainWin);
@@ -640,6 +660,44 @@ function registerAppearanceIpc(server) {
   );
 }
 
+// Starts the server when OBS transitions from stopped to running. The watcher runs only while
+// this option is enabled, avoids overlapping tasklist calls, and is stopped immediately if disabled.
+function watchObs(server) {
+  let previous = false;
+  let checking = false;
+  let active = true;
+  const timer = setInterval(async () => {
+    if (!active || checking) return;
+    checking = true;
+    try {
+      const running = await processRunning(OBS_PROCESSES);
+      if (!active) return;
+      if (running && !previous && !server.state.online && !server.child) {
+        server.addLog('APP', 'OBS started. Starting the Fishingbot server.', 'ok');
+        server.start().catch((error) => server.addLog('APP', `Could not start the server after OBS opened: ${error.message}`, 'warn'));
+      }
+      previous = running;
+    } catch (error) {
+      if (active) server.addLog('APP', `Could not check whether OBS is running: ${error.message}`, 'warn');
+    } finally {
+      checking = false;
+    }
+  }, 15000);
+  return () => {
+    active = false;
+    clearInterval(timer);
+  };
+}
+
+function syncObsWatcher(server, enabled) {
+  if (enabled && !stopObsWatcher) {
+    stopObsWatcher = watchObs(server);
+  } else if (!enabled && stopObsWatcher) {
+    stopObsWatcher();
+    stopObsWatcher = null;
+  }
+}
+
 // Offline editors: each one is its own window that uses the Control Centre look.
 const OFFLINE_WINDOWS = Object.freeze({
   loot: { file: path.join('loot', 'loot.html'), title: 'Loot table (offline)' },
@@ -818,8 +876,8 @@ function createMainWindow(preload, renderer) {
     if (revealed) return;
     revealed = true;
     clearTimeout(fallback);
-    // Started by Windows at sign-in (Start with Windows, or the OBS start, which needs the app running at sign-in):
-    // the window opens minimised, so it does not come to the front uninvited. A normal launch is shown as before.
+    // Started by Windows at sign-in (Start with Windows, or the OBS-watcher option): the window opens
+    // minimised so it does not interrupt the user. A normal launch is shown as before.
     if (app.getLoginItemSettings().wasOpenedAtLogin) {
       win.showInactive();
       win.minimize();
@@ -844,6 +902,15 @@ function createMainWindow(preload, renderer) {
     win.webContents.reloadIgnoringCache();
   });
 
+  win.on('close', (event) => {
+    // When OBS-triggered server start is enabled, keep the lightweight desktop host alive in
+    // the background so it can detect OBS opening. The user's Quit command still exits normally.
+    if (!appQuitting && settings.view(ROOT).startup.startWhenObsStarts) {
+      event.preventDefault();
+      win.minimize();
+      startupLog('Window close requested while OBS auto-start is enabled; minimised to keep the OBS watcher alive.');
+    }
+  });
   win.on('closed', () => {
     clearTimeout(fallback);
     mainWin = null;
@@ -863,13 +930,13 @@ async function main() {
   await app.whenReady();
   clearTimeout(slowStart);
   startupLog('Electron is ready.');
-  // Synchronize the OS login registration from the persisted checkbox on every app launch.
-  // This also clears stale registrations created by older builds that conflated OBS startup
-  // with Windows sign-in startup.
+  // Synchronize OS login registration from both explicit startup options on every launch.
+  // This also clears any stale registration if both options are off.
   try {
-    const startOnPc = Boolean(settings.view(ROOT).startup.startOnPc);
-    app.setLoginItemSettings({ openAtLogin: startOnPc, path: process.execPath });
-    startupLog(`Windows sign-in startup ${startOnPc ? 'enabled' : 'disabled'} from saved setting.`);
+    const startup = settings.view(ROOT).startup;
+    const openAtLogin = Boolean(startup.startOnPc || startup.startWhenObsStarts);
+    app.setLoginItemSettings({ openAtLogin, path: process.execPath });
+    startupLog(`Windows sign-in startup ${openAtLogin ? 'enabled' : 'disabled'} from saved settings (Start with Windows: ${Boolean(startup.startOnPc)}; OBS watcher: ${Boolean(startup.startWhenObsStarts)}).`);
   } catch (error) {
     startupLog(`Could not synchronize Windows sign-in startup setting: ${error.message}`);
   }
@@ -928,6 +995,7 @@ async function main() {
   mainWin = createMainWindow(path.join(__dirname, 'preload.js'), path.join(__dirname, 'renderer'));
   startupLog('Main window created.');
   server.begin();
+  syncObsWatcher(server, settings.view(ROOT).startup.startWhenObsStarts);
 
   const runAutomaticUpdateCheck = (reason) => {
     const view = settings.view(ROOT);
@@ -953,6 +1021,8 @@ async function main() {
     if (quitting) return;
     event.preventDefault();
     quitting = true;
+    if (stopObsWatcher) { stopObsWatcher(); stopObsWatcher = null; }
+    clearInterval(updateCheckTimer);
     server.dispose();
     server
       .stop()

@@ -7,17 +7,17 @@
 - `docs/CHAT-COMMANDS.md`: full command syntax table, shop IDs, limits and privacy notes.
 - **Setup**: reconnect the Twitch bot account and grant the new whisper scope. Twitch recipient limits and recipient privacy controls still apply.
 
-## 2 and 5. OBS auto-start and Windows startup separation
+## 2 and 5. OBS auto-start and Windows startup options
 
-- `desktop-electron/main.js`: Windows login registration is based only on the saved `startOnPc` checkbox and is synchronized at startup, which clears stale registrations from older builds.
-- `desktop-electron/renderer/desktop.html`: Startup checkbox copy clarifies that OBS auto-start is separate.
-- `obs-scripts/fishingbot-autostart.lua`: adds an OBS Lua script with executable-path selection, launch-on-OBS-start and optional close-on-OBS-exit. It avoids starting a second instance and only closes a PID it launched.
-- `build.bat`: packages the new database worker (in addition to the existing database worker).
+- `desktop-electron/main.js`: synchronizes explicit Windows-start and OBS-watcher preferences at startup and whenever Startup settings change.
+- `desktop-electron/renderer/desktop.html`: exposes both Startup checkboxes and explains their behavior.
+- `obs-scripts/fishingbot-autostart.lua`: provides an OBS Lua script with executable-path detection, launch-on-OBS-start and optional close-on-OBS-exit. It avoids starting a second instance and only closes a PID it launched.
+- `build.bat`: packages the OBS script and database worker for distribution.
 - `docs/OBS-SETUP.md`: step-by-step OBS install, configuration, verification and troubleshooting.
 
-### Root cause and fix
+### Behavior and trade-off
 
-The previous settings path treated the legacy `startWhenObsStarts` setting as sufficient to enable `app.setLoginItemSettings({ openAtLogin: ... })`, conflating OBS startup with Windows sign-in startup. The old OBS detection watcher also ran inside the desktop app, so it could only react when Fishingbot itself was already running; it could not reliably launch an app that was closed when OBS started. The watcher also depended on detecting an OBS process after app startup. The fix removes that watcher, registers Windows login startup only from `startOnPc`, synchronizes that setting each launch, and delegates OBS lifecycle to a dedicated OBS script.
+The OBS watcher option keeps Fishingbot Desktop running minimized from Windows sign-in so it can notice OBS opening and start the server. When it is the only startup option enabled, the desktop starts without launching the server immediately; the server waits until OBS is detected. If Fishingbot is not running, the dedicated OBS Lua script can instead launch the desktop when OBS starts; OBS requires that script to be added once through Tools → Scripts. The two paths work together and avoid duplicate app starts.
 
 ## 3. Full database batch import
 
@@ -66,3 +66,18 @@ Validation: Electron syntax checks, Node syntax checks for the Twitch server/man
 ### Minimized embedded-app resource usage
 
 - Embedded Control Centre webviews are now scheduled for a pause 5 seconds after their desktop window is minimized (previously 20 seconds). Clean pages are snapshotted and unloaded to `about:blank`, stopping page scripts and polling; they reload when restored. Pages with unsaved edits are deliberately kept loaded to avoid losing work, while Chromium throttles background-page timers. Unfocused but visible pages retain the longer 60-second pause policy. This is implemented in the desktop renderer; runtime resource usage still needs confirmation in a packaged Windows build.
+
+## Data safety and installer feedback follow-up
+
+- Installer upgrades now report pre-update backup progress file-by-file, verify the created ZIP by opening and reading its entries, and stop before replacing program files if the recovery archive cannot be verified. The finish page retains the archive path.
+- Dropdown backgrounds use a stronger blur/saturation and a more opaque dark surface for readability; performance mode still disables expensive backdrop filters.
+- Database-import job status files are written via a temporary file and rename, reducing the chance the Settings UI reads a partially written status. Completion feedback explicitly identifies the persistent database location and pre-import backup.
+- Imported records are committed into `data/fishing.sqlite`; pre-import snapshots live under `data/backups/pre-import-*.sqlite`. The installer treats `data/` as protected user data and does not include it in app-owned obsolete-file cleanup. Update recovery archives also copy the existing data folder. The uninstaller keeps data/backups unless the user explicitly chooses to delete data.
+
+## OBS Startup checkbox restored
+
+- Restored **Start the server when OBS starts** in Settings → Startup, along with the existing setting persistence.
+- The option enables a serialized 15-second OBS process watcher, with an immediate first check. When this is the only startup option enabled, the server waits until OBS transitions to running; when it is not already running, the watcher starts it.
+- The watcher mode registers Fishingbot Desktop for Windows sign-in and starts it minimized, and closing its window minimizes it while the watcher remains enabled. The app's Quit command is still available to exit.
+- The standalone OBS Lua launcher remains packaged for the alternative setup where OBS launches Fishingbot Desktop itself. Its one-time registration in OBS Tools → Scripts is still required by OBS.
+- Verified syntax, tests, and package integrity; actual Windows sign-in / OBS lifecycle testing still requires a Windows run.

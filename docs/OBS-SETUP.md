@@ -23,7 +23,7 @@ The OBS integration is a standalone Lua script. It is deliberately separate from
 
 ## Windows login startup is a separate setting
 
-Open **Fishingbot Desktop → Settings → Startup**. Only **Start Fishingbot Desktop when Windows starts** controls the Windows sign-in registration. It is unchecked by default. If unchecked, Fishingbot should not run at Windows sign-in; the OBS Lua script can still launch it later when OBS opens. On each app launch, Fishingbot synchronizes the saved checkbox to the OS login registration, which also clears stale registrations created by older versions.
+Open **Fishingbot Desktop → Settings → Startup**. **Start Fishingbot Desktop when Windows starts** keeps the current Windows sign-in behavior (the server also starts when the desktop opens). **Start the server when OBS starts** starts Fishingbot Desktop minimized at sign-in and waits to launch the server until OBS is detected, as long as the Windows-start checkbox is off. Closing the window minimizes Fishingbot while this watcher is enabled; use the app's **Quit** command to exit. The dedicated Lua script above is the alternative when you want OBS to launch Fishingbot even if the desktop app was not already running. On each app launch, Fishingbot synchronizes the saved startup choices to the OS login registration, which also clears stale registrations from older versions.
 
 ## Twitch private command setup
 
@@ -31,4 +31,4 @@ Viewer management commands return via Twitch Whispers, so the connected bot acco
 
 ## Remove the integration
 
-In OBS **Tools → Scripts**, select **Fishingbot Auto-Start** and click **−**. The script no longer launches Fishingbot. The Windows login checkbox remains independent; disable it separately in Fishingbot Settings if needed.
+In OBS **Tools → Scripts**, select **Fishingbot Auto-Start** and click **−**. This removes the Lua-script launch path only. In Fishingbot Settings → Startup, turn off **Start the server when OBS starts** and **Start Fishingbot Desktop when Windows starts** as well if you do not want either option registering a sign-in launch.
