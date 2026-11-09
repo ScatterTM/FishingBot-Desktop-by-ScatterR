@@ -61,7 +61,22 @@ local function make_launch_script(exe_path, pid_file, log_file)
     '$pidFile = ' .. ps_quote(pid_file),
     '$logFile = ' .. ps_quote(log_file),
     'try {',
-    "  if (-not (Test-Path -LiteralPath $exePath -PathType Leaf)) { throw 'The executable path does not exist.' }",
+    '  if (-not $exePath) {',
+    '    $candidates = @(',
+    "      (Join-Path $env:LOCALAPPDATA 'Programs\\Fishingbot Desktop\\Fishingbot.exe'),",
+    "      (Join-Path $env:LOCALAPPDATA 'Fishingbot\\Fishingbot.exe'),",
+    "      (Join-Path $env:ProgramFiles 'Fishingbot Desktop\\Fishingbot.exe'),",
+    "      (Join-Path $env:ProgramFiles 'Fishingbot\\Fishingbot.exe'),",
+    "      (Join-Path ${env:ProgramFiles(x86)} 'Fishingbot Desktop\\Fishingbot.exe')",
+    '    ) | Where-Object { $_ }',
+    '    foreach ($candidate in $candidates) { if (Test-Path -LiteralPath $candidate -PathType Leaf) { $exePath = $candidate; break } }',
+    '    if (-not $exePath) {',
+    "      $keys = @('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*')",
+    "      foreach ($key in $keys) { $entry = Get-ItemProperty $key -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '*Fishingbot*' -and $_.InstallLocation } | Select-Object -First 1; if ($entry) { $candidate = Join-Path $entry.InstallLocation 'Fishingbot.exe'; if (Test-Path -LiteralPath $candidate -PathType Leaf) { $exePath = $candidate; break } } }",
+    '    }',
+    '  }',
+    "  if (-not $exePath -or -not (Test-Path -LiteralPath $exePath -PathType Leaf)) { throw 'Could not auto-detect Fishingbot.exe. Set the path in OBS Tools > Scripts.' }",
+    "  Set-Content -LiteralPath (Join-Path (Split-Path -Parent $logFile) 'detected-exe-path.txt') -Value $exePath -Encoding UTF8",
     '  $existing = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -and [String]::Equals($_.ExecutablePath, $exePath, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1',
     '  if ($existing) {',
     '    if (Test-Path -LiteralPath $pidFile) { Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue }',
@@ -70,7 +85,7 @@ local function make_launch_script(exe_path, pid_file, log_file)
     '  }',
     '  $process = Start-Process -FilePath $exePath -PassThru',
     '  Set-Content -LiteralPath $pidFile -Value ([string]$process.Id) -Encoding ASCII',
-    "  Add-Content -LiteralPath $logFile -Value ('[' + (Get-Date -Format s) + '] Started Fishingbot PID ' + $process.Id)",
+    "  Add-Content -LiteralPath $logFile -Value ('[' + (Get-Date -Format s) + '] Started Fishingbot PID ' + $process.Id + ' from ' + $exePath)",
     '} catch {',
     "  Add-Content -LiteralPath $logFile -Value ('[' + (Get-Date -Format s) + '] START ERROR: ' + $_.Exception.Message)",
     '  exit 2',
@@ -84,6 +99,7 @@ local function make_close_script(exe_path, pid_file, log_file)
     '$exePath = ' .. ps_quote(exe_path),
     '$pidFile = ' .. ps_quote(pid_file),
     '$logFile = ' .. ps_quote(log_file),
+    "if (-not $exePath) { $detected = Join-Path (Split-Path -Parent $logFile) 'detected-exe-path.txt'; if (Test-Path -LiteralPath $detected) { $exePath = (Get-Content -LiteralPath $detected -TotalCount 1).Trim() } }",
     'try {',
     '  if (Test-Path -LiteralPath $pidFile) {',
     '    $savedPid = 0',
@@ -111,8 +127,7 @@ local function schedule_launch()
     launch_attempted = true
     local exe = tostring(config.exe_path or ''):gsub('^%s+', ''):gsub('%s+$', '')
     if exe == '' then
-      log(obs.LOG_WARNING, 'Set the Fishingbot executable path in Tools > Scripts > Fishingbot Auto-Start.')
-      return
+      log(obs.LOG_INFO, 'No path configured; auto-detecting Fishingbot.exe from standard install locations and registry.')
     end
     if exe:find('[\r\n"]') then
       log(obs.LOG_ERROR, 'The executable path contains an unsupported quote or newline.')

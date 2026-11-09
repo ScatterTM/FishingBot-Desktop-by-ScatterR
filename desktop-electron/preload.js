@@ -24,7 +24,6 @@ contextBridge.exposeInMainWorld('fishingbot', {
   reconnectTwitch: () => ipcRenderer.invoke('twitch:reconnect'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (section, values) => ipcRenderer.invoke('settings:save', section, values),
-  downloadObsBundle: () => ipcRenderer.invoke('obs:download-bundle'),
   setUpdateRepository: (payload) => ipcRenderer.invoke('admin:repository', payload),
   changeAdminPassword: (payload) => ipcRenderer.invoke('admin:password', payload),
   generatePairingCode: (payload) => ipcRenderer.invoke('admin:pairCode', payload),

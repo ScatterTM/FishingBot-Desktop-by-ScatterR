@@ -655,21 +655,18 @@ export async function handleChatEvent(event) {
   }
 
   if (!isChatInfoCommand(text)) return;
-  console.log(`[bot] Viewer management command from ${user}: ${text.split(/\s+/, 1)[0]}`);
+  const replyMode = (await readChatSettings().catch(() => null))?.chatCommandReply || 'public';
+  console.log(`[bot] ${replyMode === 'whisper' ? 'Private' : 'Public'} chat command from ${user}: ${text.split(/\s+/, 1)[0]}`);
   const chatterId = String(event.chatter_user_id || '');
-  const replyMode = (await readChatSettings().catch(() => null))?.commandReplyMode || 'whisper';
-  if (replyMode !== 'chat' && !/^\d{1,30}$/.test(chatterId)) {
+  if (replyMode === 'whisper' && !/^\d{1,30}$/.test(chatterId)) {
     console.warn(`[bot] Cannot privately reply to ${user}: Twitch did not include a valid chatter ID.`);
     return;
   }
   const reply = await runChatInfoCommand({ text, user, userId: chatterId });
-  if (!reply) return;
-  if (replyMode === 'chat') {
-    // Public mode is opt-in and still uses the common rate-limited chat send queue.
-    enqueueChat(reply, String(event.message_id || ''));
-    return;
+  if (reply) {
+    if (replyMode === 'whisper') enqueueWhisper(chatterId, reply);
+    else enqueueChat(reply);
   }
-  enqueueWhisper(chatterId, reply);
 }
 
 // ---- Sending chat -----------------------------------------------------------------
@@ -720,8 +717,9 @@ export async function sendChatMessage(text, replyParentMessageId = '') {
 }
 
 
-// Command replies default to Twitch Whispers; streamers can choose public chat in Game Settings.
-// Whisper mode enforces Twitch's 40 unique recipients/day limit plus a conservative send interval.
+// Command responses are sent as Twitch Whispers, never as public chat messages.
+// Twitch limits a bot to 40 unique recipients/day and applies its own per-minute
+// limits as well; this process enforces both before making a request.
 export function enqueueWhisper(toUserId, text) {
   const recipient = String(toUserId || '');
   if (!/^\d{1,30}$/.test(recipient)) return;

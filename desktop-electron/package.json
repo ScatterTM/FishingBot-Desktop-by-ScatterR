@@ -48,10 +48,6 @@
       {
         "from": "renderer/assets/app.ico",
         "to": "app.ico"
-      },
-      {
-        "from": "obs-download/Fishingbot-OBS-Setup.zip",
-        "to": "Fishingbot-OBS-Setup.zip"
       }
     ]
   }

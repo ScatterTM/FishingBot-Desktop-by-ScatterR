@@ -483,7 +483,7 @@ export async function runChatInfoCommand({ text, user, userId }) {
       case 'pond': return pondReply(login);
       case 'leaderboard':
       case 'top': return leaderboardReply();
-      case 'help': return 'Viewer commands (replies follow streamer setting: Whisper or public chat): !buy [perk-id] [rarity]; !perks [enable|disable perk-id]; !autofish start [area-id] / stop; !areas [list|buy|select area-id|unselect]; !treasury; !inventory [list page]; !stats; !fishdex; !pond; !leaderboard.';
+      case 'help': return 'Fishingbot commands: !fish [pond]; !buy [perk-id] [rarity]; !perks [enable|disable perk-id]; !autofish start [area-id] / stop; !areas [list|buy|select area-id|unselect]; !treasury; !inventory or !inv [list page]; !stats; !fishdex or !dex; !pond; !leaderboard or !top; !help.';
       default: return null;
     }
   } catch (error) {

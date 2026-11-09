@@ -16,7 +16,7 @@ const queue = require('./queue');
 const gameSettings = require('./game-settings');
 const twitchConfig = require('./twitch-config');
 const appearance = require('./appearance');
-const STRINGS = require('./i18n/desktop.json');
+const DESKTOP_STRINGS = require('./i18n/desktop.json');
 
 // The Fishingbot folder: holds local/, .env and data/. Installed: the exe's folder.
 // Name and logo shown by Windows (taskbar, Alt+Tab, window icon). Packaged builds use the same name.
@@ -49,6 +49,35 @@ const ROOT = path.resolve(
     (app.isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '..')),
 );
 
+// Merge the desktop dictionary with the shared browser/Control Centre catalogs. This keeps a
+// single language choice useful in desktop menus, dialogs, server pages, and dynamic notifications.
+function loadUiStrings(root, desktopStrings) {
+  const result = Object.fromEntries(Object.entries(desktopStrings).map(([code, phrases]) => [code, { ...phrases }]));
+  const candidates = [path.join(root, 'i18n'), path.resolve(__dirname, '..', 'i18n')];
+  const i18nDir = candidates.find((dir) => fs.existsSync(path.join(dir, 'en.json')));
+  if (!i18nDir) return result;
+  const readJson = (file) => {
+    try { return JSON.parse(fs.readFileSync(path.join(i18nDir, file), 'utf8')); } catch { return {}; }
+  };
+  const english = readJson('en.json');
+  for (const code of ['de', 'es', 'fr', 'zh']) {
+    const localized = readJson(`${code}.json`);
+    const target = result[code] || (result[code] = {});
+    for (const [key, source] of Object.entries(english)) {
+      const translated = localized[key];
+      if (typeof source === 'string' && typeof translated === 'string' && translated !== source && !(source in target)) {
+        target[source] = translated;
+      }
+    }
+    const phrases = readJson(`phrases-${code}.json`);
+    for (const [source, translated] of Object.entries(phrases)) {
+      if (typeof source === 'string' && typeof translated === 'string' && !(source in target)) target[source] = translated;
+    }
+  }
+  return result;
+}
+const STRINGS = loadUiStrings(ROOT, DESKTOP_STRINGS);
+
 // Set when the app is really quitting (before-quit). Closing the window while the OBS start is on only minimises it.
 let appQuitting = false;
 const SECTION_KEYS = {
@@ -63,6 +92,7 @@ const SECTION_KEYS = {
 
 let mainWin = null;
 let updating = false;
+let screenLocked = false;
 
 // "1.0.3-beta" -> "1.0.3" (the numbers only, so the label after them does not matter).
 function numericVersion(text) {
@@ -317,6 +347,13 @@ async function runUpdateCheck({ boot }, server) {
   }
   server.addLog('UPDATE', `Update ${info.latest} is available.`, 'ok');
 
+  if (screenLocked) {
+    // Do not put a modal installer prompt over the Windows lock screen. The unlock handler
+    // performs a fresh check and presents the update prompt when the user can respond.
+    server.addLog('UPDATE', `Update ${info.latest} is available; deferring the prompt until Windows is unlocked.`, 'ok');
+    reportUpdate('available', { latest: info.latest, current: info.current, deferredUntilUnlock: true });
+    return { status: 'available', latest: info.latest, deferredUntilUnlock: true };
+  }
   const { response } = await dialog.showMessageBox({
     type: 'info',
     title: 'Fishingbot Desktop Updates',
@@ -404,20 +441,6 @@ function registerIpc(server, admin) {
   );
 
   handleTrusted('settings:get', () => settings.view(ROOT));
-  handleTrusted('obs:download-bundle', safe(async () => {
-    const bundlePath = app.isPackaged
-      ? path.join(process.resourcesPath, 'Fishingbot-OBS-Setup.zip')
-      : path.join(__dirname, 'obs-download', 'Fishingbot-OBS-Setup.zip');
-    if (!fs.existsSync(bundlePath)) throw new Error('The OBS setup bundle is missing from this installation. Reinstall or use the full source package.');
-    const result = await dialog.showSaveDialog(mainWin, {
-      title: 'Download Fishingbot OBS script and setup guide',
-      defaultPath: path.join(app.getPath('downloads'), 'Fishingbot-OBS-Setup.zip'),
-      filters: [{ name: 'ZIP archive', extensions: ['zip'] }]
-    });
-    if (result.canceled || !result.filePath) return { cancelled: true };
-    fs.copyFileSync(bundlePath, result.filePath);
-    return { cancelled: false, filePath: result.filePath };
-  }));
   // Backups: the list in data/backups, and "Back up now" (the server makes the copy on its next check).
   handleTrusted('backup:list', safe(async () => {
     const dir = path.join(ROOT, 'data', 'backups');
@@ -853,8 +876,17 @@ async function main() {
   app.setAppUserModelId('com.fishingbot.desktop');
   Menu.setApplicationMenu(null);
   // Windows locking (Win+L) or sleep: the desktop locks too, if the Security setting is on.
-  powerMonitor.on('lock-screen', () => send('windows:locked'));
-  powerMonitor.on('suspend', () => send('windows:locked'));
+  powerMonitor.on('lock-screen', () => { screenLocked = true; send('windows:locked'); });
+  powerMonitor.on('suspend', () => { screenLocked = true; send('windows:locked'); });
+  powerMonitor.on('unlock-screen', () => {
+    screenLocked = false;
+    send('windows:unlocked');
+    const view = settings.view(ROOT);
+    if (view.updates.autoCheck && view.updates.repository) {
+      setTimeout(() => checkForUpdates({ boot: true }, server).catch((err) =>
+        server.addLog('UPDATE', `Update check after unlock failed: ${err.message}`, 'warn')), 1500);
+    }
+  });
 
   const crashLog = path.join(userData, 'crash.log');
   process.on('uncaughtException', (err) => {
@@ -897,14 +929,22 @@ async function main() {
   startupLog('Main window created.');
   server.begin();
 
-  setTimeout(() => {
+  const runAutomaticUpdateCheck = (reason) => {
     const view = settings.view(ROOT);
-    if (view.updates.autoCheck && view.updates.repository) {
-      checkForUpdates({ boot: true }, server).catch((err) =>
-        server.addLog('UPDATE', `Update check failed: ${err.message}`, 'warn'),
-      );
+    if (!view.updates.autoCheck || !view.updates.repository) {
+      server.addLog('UPDATE', `Automatic update check skipped (${reason}): enable Auto-check and configure a GitHub repository in Settings.`, 'info');
+      return;
     }
-  }, 20000);
+    checkForUpdates({ boot: true }, server).then((result) => {
+      server.addLog('UPDATE', `Automatic update check (${reason}) completed: ${result.status || 'unknown'}.`, 'info');
+    }).catch((err) => server.addLog('UPDATE', `Automatic update check (${reason}) failed: ${err.message}`, 'warn'));
+  };
+  setTimeout(() => runAutomaticUpdateCheck('startup'), 20000);
+  // Recheck periodically so a missed startup/network failure does not disable update discovery.
+  const updateCheckTimer = setInterval(() => {
+    if (!updating) runAutomaticUpdateCheck('periodic');
+  }, 6 * 60 * 60 * 1000);
+  updateCheckTimer.unref?.();
 
   // Stop a server this app started, then exit.
   let quitting = false;

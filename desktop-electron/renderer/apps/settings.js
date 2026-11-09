@@ -522,37 +522,6 @@ Choose OK to overwrite duplicates (latest value wins), or Cancel to skip existin
         document.dispatchEvent(new CustomEvent('fishingbot:language', { detail: language }));
       }
     }
-    // OBS startup is managed by a script loaded by OBS itself, not Windows login.
-    // The checkbox only reveals the downloadable package; users still add the Lua file in OBS.
-    const obsStartupCheckbox = body.querySelector('input[name="startWhenObsStarts"]');
-    const obsDownloadRow = q('#obs-script-download-row');
-    const obsDownloadButton = q('#download-obs-bundle');
-    const obsDownloadStatus = q('#obs-script-download-status');
-    const syncObsDownloadRow = () => {
-      if (obsDownloadRow) obsDownloadRow.hidden = !obsStartupCheckbox?.checked;
-    };
-    obsStartupCheckbox?.addEventListener('change', syncObsDownloadRow);
-    obsDownloadButton?.addEventListener('click', async () => {
-      if (!obsDownloadButton) return;
-      obsDownloadButton.disabled = true;
-      if (obsDownloadStatus) obsDownloadStatus.textContent = 'Preparing download…';
-      try {
-        const result = await api.downloadObsBundle();
-        if (!result.ok) throw new Error(result.error || 'Could not prepare the OBS setup bundle.');
-        if (result.cancelled) {
-          if (obsDownloadStatus) obsDownloadStatus.textContent = 'Download cancelled.';
-          return;
-        }
-        if (obsDownloadStatus) obsDownloadStatus.textContent = `Saved ${result.filePath}`;
-        say('OBS script and setup guide saved. Follow the guide inside the ZIP to add it in OBS.');
-      } catch (error) {
-        if (obsDownloadStatus) obsDownloadStatus.textContent = error.message || 'Download failed.';
-        say(error.message || 'Could not download the OBS setup bundle.', 'bad');
-      } finally {
-        obsDownloadButton.disabled = false;
-      }
-    });
-
     body.querySelectorAll('form[data-section]:not([data-action]):not([data-section="appearance"])').forEach((form) => {
       let timer = null;
       const queue = () => {
@@ -706,7 +675,6 @@ Choose OK to overwrite duplicates (latest value wins), or Cancel to skip existin
       .then((data) => {
         language = data.interface && data.interface.language;
         body.querySelectorAll('form[data-section]').forEach((form) => fill(form, data));
-        syncObsDownloadRow();
         renderFolderViewers(data.folder ? data.folder.viewers : []);
         if (dropdowns) dropdowns.refreshAll(body);
       })

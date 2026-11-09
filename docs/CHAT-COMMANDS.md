@@ -1,15 +1,15 @@
 # Twitch chat commands (viewer reference)
 
-The desktop Extension is optional. Viewers can use these commands directly in the broadcaster's Twitch chat from desktop or mobile. Command response visibility is configured by the streamer in **Control Centre → Game settings → Fishing and chat → Viewer management command replies**. **Private Whisper** is the default; **Public Twitch chat** posts command responses in the channel. The bot never accepts a target username in these commands; a viewer can only operate on their own account.
+The desktop Extension is optional. Viewers can use these commands directly in the broadcaster's Twitch chat from desktop or mobile. Commands that read or change a viewer's own account are answered publicly in Twitch chat by default. The streamer can switch replies to private Whispers in Game settings → Chat messages → Chat command reply visibility. The bot never accepts a target username in these commands; a viewer can only operate on their own account.
 
 ## Full command syntax
 
 | Command syntax | What it does | Notes / examples |
 |---|---|---|
-| `!buy` | Lists purchasable Treasury perks and current prices in the selected reply mode. | Use the perk ID, not the display label. |
+| `!buy` | Privately lists purchasable Treasury perks and their current prices. | Use the perk ID, not the display label. |
 | `!buy <perk-id>` | Buys a one-time shop perk with the viewer's Treasury inventory. | Example: `!buy cooldown`. Already-owned perks cannot be purchased twice. `treasuryOnly` is an unlock milestone, not a paid item. |
 | `!buy rarityBoost <rarity>` | Buys the 15-minute Rarity Boost for the selected tier. | Allowed tiers: `godly`, `legendary`, `epic`, `rare`, `uncommon`. Example: `!buy rarityBoost legendary`. |
-| `!perks` | Shows the viewer's active perks and the shop IDs/prices in the selected reply mode. | This is also the quick way to look up shop IDs. |
+| `!perks` | Privately shows the viewer's active perks and the shop IDs/prices. | This is also the quick way to look up shop IDs. |
 | `!perks enable <perk-id>` | Enables an owned toggleable perk. | Example: `!perks enable luck125`. Ownership and unlock rules still apply. |
 | `!perks disable <perk-id>` | Disables an owned toggleable perk. | Example: `!perks disable treasuryOnly`. Temporary effects may be paused according to their game rules. |
 | `!autofish start` | Starts the viewer's Auto-Fish using the current/default area. | Requires the viewer to have an Auto-Fish license/unlock and available capacity under the game settings. |
@@ -24,8 +24,8 @@ The desktop Extension is optional. Viewers can use these commands directly in th
 | `!stats` | Shows the viewer's catch, Fishdex and Auto-Fish summary. | Only the calling viewer's data is returned. |
 | `!fishdex` or `!dex` | Shows the viewer's Fishdex discovery count. | Only the calling viewer's data is returned. |
 | `!pond` | Shows the viewer's Personal Pond status. | Only the calling viewer's data is returned. |
-| `!leaderboard` or `!top` | Shows the top three catch counts. | This is an aggregate public game statistic; the response follows the selected reply mode. |
-| `!help` | Returns a compact command summary in the selected reply mode. | Use the table on this page for exact syntax. |
+| `!leaderboard` or `!top` | Shows the top three catch counts. | This is an aggregate public game statistic, delivered privately to the caller. |
+| `!help` | Privately returns a compact command summary. | Use the table on this page for exact syntax. |
 
 ### Shop perk IDs
 
@@ -46,6 +46,6 @@ The shop currently includes these IDs; `!buy` and `!perks` show the current conf
 
 - Every management command is scoped to the sender's Twitch login and validated before a database mutation.
 - The handler enforces a 2.5-second minimum gap between commands from the same viewer and a 10-second cooldown per command/viewer. Input is limited to 250 characters, with strict command argument allowlists.
-- Command responses use the selected mode: private Twitch Whisper (default) or public Twitch chat. In public mode, all channel viewers can see each response; replies also pass through the shared rate-limited chat queue.
-- Whisper mode needs the sending account's `user:manage:whispers` scope, a verified phone number, and recipient privacy settings that permit whispers. Twitch limits unique whisper recipients to 40 per day. See [`OBS-SETUP.md`](OBS-SETUP.md) for setup notes.
-- `!fish` remains the normal public fishing command and is not converted to a private management reply.
+- Command replies use public Twitch chat by default. If the streamer selects Private Whisper, the bot requires the `user:manage:whispers` scope and the recipient must be eligible to receive whispers.
+- Public replies are visible to everyone in chat. Streamers who prefer private account information can switch to Whisper mode in Game settings.
+- `!fish` remains a public fishing command regardless of the command-reply visibility setting.

@@ -374,11 +374,7 @@ export async function saveGameplaySettings(payload = {}) {
     return { ok: false, status: 400, error: 'Global cooldown must be a whole number from 0 to 240 seconds.' };
   }
 
-  const currentChat = await readChatSettings();
-  const chatInput = payload.chat && typeof payload.chat === 'object'
-    ? { ...currentChat, ...payload.chat }
-    : payload.chat;
-  const chatCheck = validateChatSettings(chatInput);
+  const chatCheck = validateChatSettings(payload.chat);
   if (!chatCheck.ok) return chatCheck;
 
   const auto = payload.autoFish || {};
@@ -763,6 +759,8 @@ function dismissToast(t){if(!t||t.dataset.out)return;t.dataset.out='1';t.classLi
 function notice(message,type){
   const kind=['good','error','warn'].includes(type)?type:'info';
   const text=String(message==null?'':message);
+  // Electron desktop apps share the shell toast system; browser mode keeps its local fallback.
+  if (window.FishingbotDesktopToast) { window.FishingbotDesktopToast(text, kind); return; }
   const host=toastHost();
   const same=[...host.querySelectorAll('.toast:not([data-out])')].find(t=>t.dataset.msg===text&&t.dataset.kind===kind);
   if(same)dismissToast(same);
@@ -791,7 +789,7 @@ function setView(html,title){document.getElementById('view').innerHTML=html;docu
 async function reconnect(){try{const r=await fetch('/local/bot/reconnect',{method:'POST'});const data=await r.json().catch(()=>({}));if(r.ok&&data.ok){await refreshSettings();renderTab();notice('Twitch reconnected.','good');return;}if(r.status===409||data.configured===false){const link=await call('bot-login-link');location.href=link.url;return;}throw new Error(data.error||'Reconnect failed.');}catch(error){notice(error.message,'error');}}
 async function disconnect(){if(!confirm('Disconnect the Twitch account from Fishingbot on this PC?'))return;try{const response=await fetch('/local/bot/disconnect',{method:'POST'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Could not disconnect Twitch.');await refreshSettings();renderTab();notice('Twitch account disconnected from this PC.','good');}catch(error){notice(error.message,'error');}}
 function statusPill(ok,text){return '<span class="status '+(ok?'ok':'bad')+'">'+(ok?'● ':'○ ')+esc(text)+'</span>';}
-const VIEWER_COMMANDS=[['!fish','Catch a fish. Use !fish pond when your Pond chat collection is unlocked.'],['!inventory / !inv','Get a short count summary; use !inventory list [page] for details.'],['!perks','See and enable/disable your own perks.'],['!stats','See casts, Fishdex progress, Auto-Fish and title.'],['!fishdex / !dex','See discovered species.'],['!pond','See Pond level, FishyTokens and waiting fish.'],['!leaderboard / !top','See the top three anglers by catches.'],['!help','Show available Fishingbot chat commands.']];
+const VIEWER_COMMANDS=[['!fish','Catch a fish. Use !fish pond when your Pond chat collection is unlocked.'],['!buy [perk-id] [rarity]','List or buy Treasury shop perks; rarityBoost accepts a rarity.'],['!perks [enable|disable perk-id]','List perks or toggle an owned perk.'],['!autofish start [area-id] / stop','Start or stop your own Auto-Fish.'],['!areas [list|buy|select area-id|unselect]','List, unlock or select fishing areas.'],['!treasury','Show your Treasury balance, earnings and spending.'],['!inventory / !inv','Get a short count summary; use !inventory list [page] for details.'],['!stats','See casts, Fishdex progress, Auto-Fish and title.'],['!fishdex / !dex','See discovered species.'],['!pond','See Pond level, FishyTokens and waiting fish.'],['!leaderboard / !top','See the top three anglers by catches.'],['!help','Show available Fishingbot chat commands.']];
 function goTab(id){currentTab=id;app.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===currentTab));renderTab();}
 function meterHtml(percent,warn){const p=Math.max(0,Math.min(100,Number(percent)||0));return '<div class="meter'+(warn?' is-warn':'')+'" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(p)+'"><div class="meter-fill" style="width:'+p.toFixed(1)+'%"></div></div>';}
 function copyText(text){
@@ -827,7 +825,8 @@ function renderOverview(){
   // Hero: status and the single action that matters.
   const heroInner='<div class="oh-status">'+(botOnline?tr('ov.connected','Connected to Twitch'):tr('ov.notConnected','Not connected'))+'</div>'
     +'<p class="small">'+(botOnline?tr('ov.signedIn','Signed in as {0}.').replace('{0}',esc(bot.displayName||bot.login||tr('ov.yourAccount','your account'))):tr('ov.connectHint','Connect your account so the bot can answer chat.'))+'</p>'
-    +'<button class="btn" id="overview-reconnect" type="button">'+(botOnline?tr('ov.reconnect','Reconnect'):tr('ov.connectTwitch','Connect Twitch'))+'</button>';
+    +'<button class="btn" id="overview-reconnect" type="button">'+(botOnline?tr('ov.reconnect','Reconnect'):tr('ov.connectTwitch','Connect Twitch'))+'</button>'
+    +(botOnline?'<button class="btn danger" id="overview-disconnect" type="button">Disconnect Twitch</button>':'');
   const hero=tile('oh-tile--hero oh-hero',heroInner);
 
   // Three facts, each its own tile.
@@ -861,6 +860,7 @@ function renderOverview(){
 
   setView('<div class="ov oh-bento">'+hero+stats+perfCard+actions+links+commands+'</div>',tr('page.overview','Overview'));
   document.getElementById('overview-reconnect')?.addEventListener('click',reconnect);
+  document.getElementById('overview-disconnect')?.addEventListener('click',disconnect);
   
   app.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>goTab(b.dataset.go)));
   app.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>copyText(b.dataset.copy)));
@@ -894,9 +894,9 @@ function renderGame(){
   // Save buttons sit at the top, so a long page never hides them.
   const bar='<div class="card b-12"><div class="row"><div><h2>'+tr('game.s24','Game settings')+'</h2><p class="small">'+tr('game.s25','Changes save as you make them. Prices use Treasury items; set a price to zero to make it free.')+'</p></div><div class="actions"><span class="small">'+tr('game.autosave','Saves automatically.')+'</span></div></div></div>';
 
-  const chatS=settings.chat||{chatDetail:'full',cooldownReply:'reply',rareAnnounceTier:'off',commandReplyMode:'whisper'};
+  const chatS=settings.chat||{chatDetail:'full',cooldownReply:'reply',rareAnnounceTier:'off',chatCommandReply:'public'};
   const chatField=(id,label,list,val,names)=>'<div class="inline-field"><label for="'+id+'">'+label+'</label><select id="'+id+'">'+list.map(x=>'<option value="'+x+'"'+(x===val?' selected':'')+'>'+names[x]+'</option>').join('')+'</select></div>';
-  const chat='<details class="card b-6" open><summary><h2>'+tr('game.s28','Fishing and chat')+'</h2></summary><p class="small">'+tr('game.s29','The cooldown is global. Auto-Fish availability is set here too.')+'</p>'+numeric('cooldown',tr('game.s30','Global !fish cooldown (seconds)'),settings.cooldownSeconds,0,240,1)+toggle('autofish-enabled',tr('game.s31','Allow Auto-Fish for viewers'),!!a.enabled)+'<h3>'+tr('game.s32','Chat messages')+'</h3><p class="small">'+tr('game.s33','These apply to everyone. Viewers still set their own wording.')+'</p><div class="settings-grid">'+chatField('chat-detail',tr('game.s34','Catch reply detail'),['full','short','off'],chatS.chatDetail,{full:tr('game.s35','Full'),short:tr('game.s36','Short (no luck, area or event extras)'),off:tr('game.s37','Off (no catch reply)')})+chatField('cooldown-reply',tr('game.s38','Cooldown reply'),['reply','silent'],chatS.cooldownReply,{reply:tr('game.s39','Reply in chat'),silent:tr('game.s40','Silent')})+chatField('rare-announce',tr('game.s41','Rare catch announcement'),['off','rare','epic','legendary'],chatS.rareAnnounceTier,{off:tr('game.s42','Off'),rare:tr('game.s43','Rare and above'),epic:tr('game.s44','Epic and above'),legendary:tr('game.s45','Legendary and above')})+chatField('command-reply-mode','Viewer management command replies',['whisper','chat'],chatS.commandReplyMode||'whisper',{whisper:'Private Whisper (default)',chat:'Public Twitch chat (visible to everyone)'})+'</div><p class="small">Choose whether replies to commands such as !buy, !perks, !autofish, !areas and !treasury are private or visible in public chat. Public replies can clutter chat; rate limits still apply.</p></details>';
+  const chat='<details class="card b-6" open><summary><h2>'+tr('game.s28','Fishing and chat')+'</h2></summary><p class="small">'+tr('game.s29','The cooldown is global. Auto-Fish availability is set here too.')+'</p>'+numeric('cooldown',tr('game.s30','Global !fish cooldown (seconds)'),settings.cooldownSeconds,0,240,1)+toggle('autofish-enabled',tr('game.s31','Allow Auto-Fish for viewers'),!!a.enabled)+'<h3>'+tr('game.s32','Chat messages')+'</h3><p class="small">'+tr('game.s33','These apply to everyone. Viewers still set their own wording.')+'</p><div class="settings-grid">'+chatField('chat-detail',tr('game.s34','Catch reply detail'),['full','short','off'],chatS.chatDetail,{full:tr('game.s35','Full'),short:tr('game.s36','Short (no luck, area or event extras)'),off:tr('game.s37','Off (no catch reply)')})+chatField('cooldown-reply',tr('game.s38','Cooldown reply'),['reply','silent'],chatS.cooldownReply,{reply:tr('game.s39','Reply in chat'),silent:tr('game.s40','Silent')})+chatField('rare-announce',tr('game.s41','Rare catch announcement'),['off','rare','epic','legendary'],chatS.rareAnnounceTier,{off:tr('game.s42','Off'),rare:tr('game.s43','Rare and above'),epic:tr('game.s44','Epic and above'),legendary:tr('game.s45','Legendary and above')})+chatField('chat-command-reply','Chat command reply visibility',['public','whisper'],chatS.chatCommandReply||'public',{public:'Public Twitch chat (default)',whisper:'Private Whisper'})+'</div></details>'; 
   const autoFish='<section class="card b-12"><h2>'+tr('game.s46','Auto-Fish')+'</h2></section>'+groupsHtml;
   const world='<details class="card b-6"><summary><h2>'+tr('game.s47','World features')+'</h2></summary><p class="small">'+tr('game.s48','Disabling a feature hides it for everyone. Player unlocks and progression are kept.')+'</p>'+toggle('areas-enabled',tr('game.s49','Enable fishing areas'),!!w.enabled)+toggle('double-catch-enabled',tr('game.s50','Enable double-catch progression'),!!w.doubleCatchEnabled)+'<div class="tier"><div class="badge">'+tr('game.s51','Individual areas')+'</div>'+areaRows+'</div></details>';
   const prices2='<details class="card b-6"><summary><h2>'+tr('game.s52','Shop, rod, bait and Pond prices')+'</h2></summary><h3>'+tr('game.s53','Shop perks')+'</h3><div class="price-grid">'+priceRows('shop',prices.shop)+'</div><h3>'+tr('game.s54','Fishing rods')+'</h3><div class="price-grid">'+priceRows('rods',prices.rods)+'</div><h3>'+tr('game.s55','Bait')+'</h3><div class="price-grid">'+priceRows('bait',prices.bait)+'</div>'+pondRows+'</details>';
@@ -907,7 +907,7 @@ function renderGame(){
   window.saveGameSettingsNow=async function(quiet){
     const autoFishNext={enabled:read('autofish-enabled').checked};
     for(const group of autoGroups)for(const [key] of group.fields)autoFishNext[key]=Number(read('af-'+key).value);
-    const payload={cooldownSeconds:Number(read('cooldown').value),chat:{chatDetail:read('chat-detail').value,cooldownReply:read('cooldown-reply').value,rareAnnounceTier:read('rare-announce').value,commandReplyMode:read('command-reply-mode').value},autoFish:autoFishNext,areas:{enabled:read('areas-enabled').checked,doubleCatchEnabled:read('double-catch-enabled').checked,items:Object.fromEntries((w.items||[]).map(item=>[item.id,read('area-'+item.id).checked]))}};
+    const payload={cooldownSeconds:Number(read('cooldown').value),chat:{chatDetail:read('chat-detail').value,cooldownReply:read('cooldown-reply').value,rareAnnounceTier:read('rare-announce').value,chatCommandReply:read('chat-command-reply').value},autoFish:autoFishNext,areas:{enabled:read('areas-enabled').checked,doubleCatchEnabled:read('double-catch-enabled').checked,items:Object.fromEntries((w.items||[]).map(item=>[item.id,read('area-'+item.id).checked]))}};
     try{await call('game-settings',payload);await refreshSettings();renderTab();if(!quiet)notice(tr('game.s58','Game settings saved.'),'good');}catch(e){if(!quiet)notice(e.message,'error');}
   };
   window.savePricesNow=async function(quiet){

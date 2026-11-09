@@ -38,9 +38,31 @@ The previous settings path treated the legacy `startWhenObsStarts` setting as su
 The final ZIP should be checked with the Node syntax checks and desktop check script. Windows-specific behavior (OBS Lua integration, login registration and installer packaging) still requires a run on an actual Windows/OBS installation; this Linux container cannot verify those OS integrations end-to-end.
 
 
-## Follow-up update
+## Additional reliability improvements
 
-- `lib/chat-settings.js`, `local/manager.js`, `local/twitch-bot.js`, and `local/chat-commands.js`: added a streamer setting for viewer management-command replies. **Private Whisper** remains the default; **Public Twitch chat** posts replies via the existing rate-limited public chat queue.
-- `desktop-electron/renderer/desktop.html`, `desktop-electron/renderer/apps/settings.js`, `desktop-electron/preload.js`, and `desktop-electron/main.js`: the Startup settings now have an OBS integration checkbox; checking it reveals a **Download OBS script + guide** button. The save dialog writes a ZIP containing the Lua script and setup guide.
-- `desktop-electron/obs-download/Fishingbot-OBS-Setup.zip`: a prebuilt setup bundle also included as an Electron extra resource so the button works in packaged installs.
-- `docs/OBS-SETUP.md`: updated download-first setup steps, Windows-vs-OBS startup distinctions, reply-visibility option and full viewer command list.
+- OBS auto-start now attempts to find `Fishingbot.exe` in common per-user/system installation folders and Windows uninstall registry entries when no executable path is configured. The detected path is written to `%APPDATA%\Fishingbot\detected-exe-path.txt`; explicit OBS path configuration remains supported.
+- Twitch reconnect now allows the previous EventSub socket to close before reopening and returns the bot's actual failure reason instead of a generic reconnect response.
+- Desktop automatic update checks log skipped, successful, and failed attempts; retry at six-hour intervals; and recheck on Windows unlock. If a new version is discovered while locked, the modal prompt is deferred until unlock.
+- Control Centre notifications in the desktop webview are bridged to the desktop's shared toast stack. The standalone browser experience retains its local toast fallback.
+
+Validation: Electron syntax checks, Node syntax checks for the Twitch server/manager, and the project test suite passed. OBS auto-detection, Windows lock-screen behavior, and Twitch network reconnection still require end-to-end verification on Windows with a live Twitch connection.
+
+
+## 9. Chat visibility, dropdown appearance and performance
+
+- Game settings now choose public chat (default) or private Whisper for information/management command replies. `!help` and Overview list the full command set.
+- Twitch can be disconnected directly from Overview as well as the Twitch tab.
+- Custom dropdown menus consume the desktop's live glass, accent, corner-radius and performance-mode CSS variables. The dropdown observer now processes only changed/added subtrees instead of rescanning every select after unrelated DOM updates.
+- Validation is static/unit-level only; public Twitch delivery and appearance changes still need runtime verification in the packaged Windows app.
+
+
+## 10. Searchable dropdown headers
+
+- `desktop-electron/renderer/dropdown.js`: every custom dropdown now includes a search field in its sticky menu header. Typing filters fish/items/options by visible label and value; Enter chooses the first match, arrow keys move through visible results, and Escape closes the menu. Empty searches show all results, while unmatched queries show a no-results message.
+- Dropdown option nodes are only rebuilt when the underlying option list changes, so ordinary selection changes and keystrokes do not recreate large fish/inventory menus. The same search UI is used in desktop Settings and injected Control Centre dropdowns.
+- `desktop-electron/renderer/dropdown.css`: styles the sticky search header, focus state, filtered results and empty state using the existing app glass/accent variables and performance-mode setting.
+
+
+### Minimized embedded-app resource usage
+
+- Embedded Control Centre webviews are now scheduled for a pause 5 seconds after their desktop window is minimized (previously 20 seconds). Clean pages are snapshotted and unloaded to `about:blank`, stopping page scripts and polling; they reload when restored. Pages with unsaved edits are deliberately kept loaded to avoid losing work, while Chromium throttles background-page timers. Unfocused but visible pages retain the longer 60-second pause policy. This is implemented in the desktop renderer; runtime resource usage still needs confirmation in a packaged Windows build.

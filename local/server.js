@@ -420,10 +420,14 @@ async function localRoute(req, res, url) {
   if (req.method === 'POST' && p === '/local/bot/reconnect') {
     if (!sameOriginRequest(req)) return res.status(403).json({ ok: false, error: 'Request origin could not be verified.' });
     try {
+      // Give the previous EventSub socket a moment to finish closing before opening its replacement.
+      // Immediate stop/start races could leave the new session marked as stopping.
       stopBot();
+      await new Promise(resolve => setTimeout(resolve, 250));
       const started = await startBot();
       const status = botStatus();
-      return res.status(started ? 200 : 409).json({ ok: started, ...status });
+      if (!started) return res.status(409).json({ ok: false, ...status, error: status.lastError || status.error || 'Twitch is not configured or the saved account could not reconnect.' });
+      return res.status(200).json({ ok: true, ...status });
     } catch (error) {
       console.error('[bot] Manual reconnect failed:', error?.message || error);
       return res.status(500).json({ ok: false, error: error?.message || 'Reconnect failed.' });

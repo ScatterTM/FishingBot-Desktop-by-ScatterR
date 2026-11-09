@@ -1963,6 +1963,9 @@
   // server polling stop, and it is loaded again when the window is restored. A page with unsaved edits
   // (an element marked is-dirty or savebar.is-dirty) stays loaded and is checked again later.
   const WEB_PAUSE_AFTER_MS = 20000;
+  // Minimized Control Centre webviews should release their page work promptly. Unsaved pages remain
+  // loaded (and Chromium background-throttles their timers), while clean pages can be unloaded.
+  const MINIMIZED_PAUSE_AFTER_MS = 5000;
   // A visible window that is not in front is paused after this long. It keeps its last picture (a snapshot),
   // which a click on it replaces with the live page again.
   const UNFOCUSED_PAUSE_MS = 60000;
@@ -2036,7 +2039,7 @@
     rec.minimized = flag;
     clearTimeout(rec._minTimer);
     if (rec.app.kind === 'web' && rec.body._webview) {
-      if (flag) scheduleWebPause(rec);
+      if (flag) scheduleWebPause(rec, MINIMIZED_PAUSE_AFTER_MS);
       else clearTimeout(rec._pauseTimer);
     }
     if (flag) {
@@ -2174,6 +2177,7 @@
       let zone = null;
       let shownZone = null;
       rec.el.classList.add('dragging');
+      document.body.classList.add('dragging-window');
       const move = (e) => {
         pos.left = clamp(start.left + e.clientX - start.x, bounds.minX, bounds.maxX);
         pos.top = clamp(start.top + e.clientY - start.y, bounds.minY, bounds.maxY);
@@ -2191,6 +2195,7 @@
         // Without this the transform clears through its transition: the window slid back, then forward again.
         rec.el.style.transition = 'none';
         rec.el.classList.remove('dragging');
+        document.body.classList.remove('dragging-window');
         rec.el.style.transform = '';
         rec.el.style.left = `${pos.left}px`;
         rec.el.style.top = `${pos.top}px`;
@@ -2466,6 +2471,20 @@
     frame.append(wv, skeleton, placeholder);
     body.append(frame);
     body._webview = wv;
+    // Bridge Control Centre notifications into the desktop's single toast host. The message
+    // prefix is structured and only accepted from this app's own webview.
+    wv.addEventListener('console-message', (event) => {
+      const prefix = '__FISHINGBOT_TOAST__';
+      const line = String(event.message || '');
+      if (!line.startsWith(prefix)) return;
+      try {
+        const item = JSON.parse(line.slice(prefix.length));
+        if (item && typeof item.text === 'string') toast(item.text, ({ good: 'ok', error: 'bad', warn: 'warn', info: 'info' })[item.kind] || 'info', { title: t('Fishingbot') });
+      } catch { /* Ignore malformed page messages. */ }
+    });
+    wv.addEventListener('dom-ready', () => {
+      wv.executeJavaScript(`window.FishingbotDesktopToast = (text, kind) => console.info('__FISHINGBOT_TOAST__' + JSON.stringify({text:String(text ?? ''), kind:String(kind || 'info')}));`).catch(() => {});
+    });
     body._url = url;
     body._placeholder = placeholder;
     body._skeleton = skeleton;
