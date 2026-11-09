@@ -29,6 +29,7 @@
     twitch: 'chat',
     extension: 'layers',
     viewer: 'user',
+    obs: 'download',
     broadcaster: 'video',
     log: 'download',
     settings: 'settings',
@@ -195,7 +196,10 @@
   }
 
   function serverBase() {
-    return `http://localhost:${info.port}`;
+    // Use the loopback address that the main-process supervisor actually
+    // reached. Older Windows/embedded browser resolvers can disagree about
+    // whether localhost means IPv4 or IPv6.
+    return server.base || info.base || `http://localhost:${info.port}`;
   }
 
   // Space the taskbar takes at the bottom, measured so every taskbar size leaves the right room for windows.
@@ -1690,6 +1694,7 @@
     if (flag) {
       for (const rec of windows.values()) {
         if (rec.body._placeholder) setPlaceholder(rec.body, false);
+        if (rec.body._failure) rec.body._failure.hidden = true;
         if (rec.body._webview) rec.body._stale = true;
       }
     }
@@ -1860,6 +1865,9 @@
     }
 
     placeWindow(rec, layout);
+    // Chromium/Electron webviews must be attached before navigation starts. Wait until the
+    // host window is in #windows, laid out, and wired before creating the guest navigation.
+    if (typeof body._startWebview === 'function') body._startWebview();
     if (!rec.minimized) focusWin(rec);
     saveLayout();
     return rec;
@@ -2325,8 +2333,57 @@
     syncSkeleton(body);
   }
 
+  // A failed app load must never uncover the server-stopped message or leave a permanent
+  // loading skeleton. Build the recovery UI with DOM text nodes (not interpolated HTML).
+  function showWebFailure(body, title, message) {
+    if (!body || !body._failure || body._errorShown) return;
+    if (!server.online) { setPlaceholder(body, false); return; }
+    body._errorShown = true;
+    // Keep the recovery card as the single visible feedback surface. The
+    // embedded page may have rendered its own fallback at the same time as
+    // the desktop timeout; hiding it avoids two messages occupying one pane.
+    if (body._webview) body._webview.style.visibility = 'hidden';
+    if (body._skeleton) body._skeleton.hidden = true;
+    const panel = document.createElement('div');
+    panel.className = 'web-notice';
+    panel.setAttribute('role', 'alert');
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    const detail = document.createElement('p');
+    detail.textContent = message;
+    const actions = document.createElement('div');
+    actions.className = 'web-notice-actions';
+    const retry = document.createElement('button');
+    retry.className = 'btn solid';
+    retry.type = 'button';
+    retry.textContent = 'Retry';
+    retry.addEventListener('click', () => {
+      body._errorShown = false;
+      body._loaded = false;
+      body._shellSeen = false;
+      body._probeStart = Date.now();
+      body._failure.hidden = true;
+      if (body._webview) body._webview.style.visibility = 'visible';
+      setLoading(body, true);
+      try { body._webview.reload(); } catch (error) {
+        showWebFailure(body, 'Retry could not start', error && error.message ? error.message : 'Please restart Fishingbot.');
+      }
+    });
+    const recovery = document.createElement('p');
+    recovery.className = 'web-recovery-hint';
+    recovery.textContent = `Browser recovery page: ${serverBase()}/local/apps`;
+    actions.append(retry);
+    panel.append(heading, detail, actions, recovery);
+    body._failure.replaceChildren(panel);
+    body._failure.hidden = false;
+    setLoading(body, false);
+  }
+
   // Reloads a Control Centre page and covers it with the skeleton until it is ready again.
   function reloadView(body) {
+    if (body._webview) body._webview.style.visibility = 'visible';
+    if (body._failure) body._failure.hidden = true;
+    body._errorShown = false;
     setLoading(body, true);
     body._webview.reload();
   }
@@ -2368,12 +2425,47 @@
       const lock = document.getElementById('fb-lock');
       if (lock) lock.remove();
       const button = document.querySelector(${JSON.stringify(`[data-tab="${tab}"]`)});
+      if (document.getElementById('fb-boot-error')) return 'error';
       if (!button) return document.getElementById('auth-form') ? 'login' : 'pending';
       if (!button.classList.contains('active')) button.click();
       const view = document.getElementById('view');
       const text = view ? (view.textContent || '').trim() : '';
       return view && view.children.length && !/^Loading/i.test(text) ? 'ready' : 'shell';
     })();`;
+  }
+
+  // How long a Control Centre page may take to show its tab. A Chromium webview can need well over
+  // 30 seconds on a busy PC, so the wait ends only after this limit, not at the first slow moment.
+  const READY_LIMIT_MS = 90000;
+  const NOT_READY_MESSAGE = 'Fishingbot is running, but the Control Centre did not become ready. Check the local server and try again.';
+
+  // Reads the page's own error text (its boot card), so the desktop can say what went wrong.
+  function readPageIssue(wv) {
+    return wv.executeJavaScript(`(() => {
+      // Only real failure cards count: the page's boot error, or the boot watchdog's retry card.
+      // The ordinary 'Preparing your workspace' card is not an error.
+      const card = document.getElementById('fb-boot-error') || (document.querySelector('[data-boot-retry]') ? document.querySelector('[data-boot-screen] .boot-card') : null);
+      if (!card) return '';
+      return Array.from(card.querySelectorAll('h1, p.notice, p.boot-copy')).map((node) => String(node.textContent || '').trim()).filter(Boolean).join(' ').slice(0, 300);
+    })();`, true).then((text) => (text ? `The page said: ${text}` : '')).catch(() => '');
+  }
+
+  // A page that recovers after its error was shown (for example, a slow start that then succeeds)
+  // replaces the recovery panel with the page itself.
+  function clearWebFailure(body) {
+    if (!body._errorShown) return;
+    body._errorShown = false;
+    if (body._failure) body._failure.hidden = true;
+    if (body._webview) body._webview.style.visibility = 'visible';
+  }
+
+  function failPage(wv, body, probeId, attempt) {
+    readPageIssue(wv).then((detail) => {
+      if (probeId !== body._probeId) return;
+      showWebFailure(body, 'Control Centre did not finish loading', detail ? `${NOT_READY_MESSAGE} ${detail}` : NOT_READY_MESSAGE);
+      // Keep checking quietly: if the page becomes ready later, the panel clears by itself.
+      if (attempt < 120) setTimeout(() => applyTab(wv, body, body._tab, probeId, attempt + 1), 2000);
+    });
   }
 
   function applyTab(wv, body, tab, probeId, attempt = 0) {
@@ -2386,6 +2478,7 @@
         body._shellSeen = true;
         body._loginReloads = 0;
         body._loginGiveUp = false;
+        clearWebFailure(body);
         setLoading(body, false);
         // Keep an eye out for the page asking to sign in again (the session timed out).
         again(4000);
@@ -2404,11 +2497,23 @@
       }
       // After a few seconds the skeleton gives way to whatever the page shows, so a page that
       // cannot load shows its own error and Retry button rather than loading forever.
-      if (waited > 15000 && !body._shellSeen) setLoading(body, false);
-      else if (state === 'shell' && waited > 6000) setLoading(body, false);
+      if (state === 'shell' && waited > 6000) setLoading(body, false);
+      // The page reported its own failure: show that reason now, not after a long wait.
+      if (state === 'error' && !body._shellSeen) {
+        failPage(wv, body, probeId, attempt);
+        return;
+      }
+      if (waited > READY_LIMIT_MS && !body._shellSeen) {
+        failPage(wv, body, probeId, attempt);
+        return;
+      }
       again(attempt < 40 ? 150 : 1000);
     }).catch(() => {
-      if (attempt < 600) again(attempt < 40 ? 150 : 1000);
+      if (waited > 15000) {
+        showWebFailure(body, 'Could not start the Control Centre', 'The app could not communicate with its local page. Retry the page, or open the browser recovery page.');
+        return;
+      }
+      again(attempt < 40 ? 150 : 1000);
     });
   }
 
@@ -2456,6 +2561,9 @@
     wv.setAttribute('partition', partition);
     // A transparent page lets the window glass show through the Control Centre.
     wv.setAttribute('allowtransparency', 'true');
+    // Required for target=_blank links in Twitch's Device Code page to reach the
+    // guarded main-process setWindowOpenHandler and open as another in-app window.
+    wv.setAttribute('allowpopups', '');
     body._tab = tab;
     const placeholder = document.createElement('div');
     placeholder.className = 'web-placeholder';
@@ -2463,12 +2571,18 @@
     placeholder.innerHTML =
       '<div class="web-notice"><h2>Server stopped</h2>' +
       '<p>This app shows the Control Centre while the server runs. It loads by itself once the server is up.</p>' +
-      '<button class="btn solid" type="button">Start server</button></div>';
+      '<div class="web-notice-actions"><button class="btn solid" type="button">Start server</button>' +
+      '<button class="btn" type="button" data-refresh>Refresh</button></div></div>';
     placeholder.querySelector('button').addEventListener('click', () => run(api.startServer()));
+    placeholder.querySelector('[data-refresh]').addEventListener('click', () => refreshServerView());
     placeholder.hidden = !!server.online;
     const skeleton = skeletonNode();
+    const failure = document.createElement('div');
+    failure.className = 'web-placeholder web-failure';
+    failure.hidden = true;
     body._placeholder = placeholder;
-    frame.append(wv, skeleton, placeholder);
+    body._failure = failure;
+    frame.append(wv, skeleton, placeholder, failure);
     body.append(frame);
     body._webview = wv;
     // Bridge Control Centre notifications into the desktop's single toast host. The message
@@ -2496,6 +2610,9 @@
     // A page that navigates again (reload, redirect) is covered again until it is ready.
     wv.addEventListener('did-start-navigation', (event) => {
       if (event.isMainFrame && !event.isInPlace) {
+        body._loaded = false;
+        body._errorShown = false;
+        if (body._failure) body._failure.hidden = true;
         body._probeStart = 0;
         body._shellSeen = false;
         setLoading(body, true);
@@ -2516,11 +2633,23 @@
     });
     wv.addEventListener('did-fail-load', (event) => {
       if (event.isMainFrame && event.errorCode !== -3 && !body._loaded) {
-        body._loading = false;
-        setPlaceholder(body, false);
+        showWebFailure(body, 'Could not open this app', event.errorDescription || 'The local page could not be loaded. Check that Fishingbot is running and retry.');
       }
     });
-    wv.src = url;
+    // Defer navigation until openApp has appended the complete window to #windows.
+    body._startWebview = () => {
+      if (!wv.isConnected || body._webview !== wv || wv.getAttribute('src')) return false;
+      // A Control Centre page must wait until the supervisor has selected a
+      // reachable loopback origin. This prevents an early localhost/IPv6
+      // navigation from getting stuck while the backend is already running.
+      if (tab && !server.online) return false;
+      const target = tab ? `${serverBase()}/local` : url;
+      body._url = target;
+      placeholder.hidden = true;
+      syncSkeleton(body);
+      wv.setAttribute('src', target);
+      return true;
+    };
   }
 
   // ---------- shared log ----------
@@ -2568,6 +2697,7 @@
   // ---------- widgets, tray and clock ----------
 
   function renderServer(s) {
+    const previousBase = server.base || (info && info.base) || '';
     server = s;
     setOffline(!s.online);
     $('srv-state').textContent = t(STATE_TEXT[s.state] || s.state);
@@ -2588,6 +2718,44 @@
     setTray('srv', tone, s.error || t(STATE_TEXT[s.state] || s.state));
     renderUptime();
     renderTwitch(s);
+
+    if (s.online) {
+      for (const rec of windows.values()) {
+        const body = rec.body;
+        // The server is back: the stopped notice goes, whether or not the page was loaded before.
+        if (body._placeholder) setPlaceholder(body, true);
+        if (!body._webview || typeof body._startWebview !== 'function') continue;
+        const currentUrl = body._webview.getURL();
+        if (previousBase && s.base && previousBase !== s.base && currentUrl.startsWith(previousBase)) {
+          body._url = s.base + currentUrl.slice(previousBase.length);
+          body._webview.src = body._url;
+          body._stale = false;
+        } else if (!body._webview.getAttribute('src')) {
+          body._startWebview();
+        } else if (body._stale && !document.body.classList.contains('is-locked')) {
+          // A page loaded before the stop is reloaded now. While locked, unlocked() reloads it instead.
+          body._stale = false;
+          reloadView(body);
+        }
+      }
+    }
+  }
+
+  // Refresh on the stopped notice: asks the main process to check the server now. If it is up,
+  // every Control Centre view reloads (unless the desktop is locked; unlocking reloads them).
+  async function refreshServerView() {
+    const state = await run(api.refreshServer());
+    if (!state || typeof state.online !== 'boolean') return;
+    renderServer(state);
+    if (!state.online) {
+      toast(t('The server is still stopped. Start it, then refresh.'), 'info', { title: t('Fishingbot') });
+      return;
+    }
+    if (!document.body.classList.contains('is-locked')) {
+      for (const rec of windows.values()) {
+        if (rec.body._webview) reloadView(rec.body);
+      }
+    }
   }
 
   function renderUptime() {
@@ -2963,7 +3131,13 @@
     });
     $('tw-reconnect').addEventListener('click', async () => {
       const result = await api.reconnectTwitch();
-      if (result.ok) toast(t('Twitch reconnect requested.'), 'info', { title: t('Twitch') });
+      if (result.ok && result.authUrl) {
+        urlCounter += 1;
+        const appId = `url:${urlCounter}`;
+        urlApps.set(appId, result.authUrl);
+        openApp(appId);
+        toast(t('Complete Twitch sign-in in this Fishingbot window. The code is included in the activation link.'), 'info', { title: t('Twitch') });
+      } else if (result.ok) toast(t('Twitch reconnect requested.'), 'info', { title: t('Twitch') });
       else if (result.status === 401 || result.status === 403) toast(t('Sign in to the Control Centre first, then try again.'), 'bad', { title: t('Twitch') });
       else toast(`${t('Reconnect failed')}: ${result.error || 'unknown error'}`, 'bad', { title: t('Twitch') });
     });

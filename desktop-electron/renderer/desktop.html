@@ -185,11 +185,14 @@
             <label class="check"><input type="checkbox" name="startOnPc"> Launch Fishingbot Desktop with Windows</label>
             <label class="check"><input type="checkbox" name="startWhenObsStarts"> Start the server when OBS opens</label>
             <div class="startup-info-row">
-              <button class="info-tip" type="button" aria-label="Startup options information" aria-description="Starts Fishingbot Desktop minimized when you sign in, so it can watch for OBS. When this watcher is enabled, closing the window minimizes it; choose Quit to exit completely. To launch Fishingbot directly from OBS instead, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically." title="Startup options information" data-tip="Starts Fishingbot Desktop minimized when you sign in, so it can watch for OBS. When this watcher is enabled, closing the window minimizes it; choose Quit to exit completely. To launch Fishingbot directly from OBS instead, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically.">i</button>
+              <button class="info-tip" type="button" aria-label="Startup options information" aria-description="Starts Fishingbot Desktop minimized at Windows sign-in and waits for OBS. Closing the window exits the app and stops the OBS watcher. To let OBS launch Fishingbot while it is closed, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically." title="Startup options information" data-tip="Starts Fishingbot Desktop minimized at Windows sign-in and waits for OBS. Closing the window exits the app and stops the OBS watcher. To let OBS launch Fishingbot while it is closed, add obs-scripts/fishingbot-autostart.lua under OBS Tools → Scripts. The script can detect the executable path automatically.">i</button>
+            </div>
+            <div class="startup-download-catalog" id="obs-download-catalog" aria-live="polite">
+              <p class="hint">Checking script versions and file integrity…</p>
             </div>
             <div class="startup-downloads">
-              <button class="btn" id="download-obs-lua" type="button">Download OBS Lua</button>
-              <button class="btn" id="download-obs-setup" type="button">Download setup ZIP</button>
+              <button class="btn" id="download-obs-lua" type="button">Download Lua script</button>
+              <button class="btn" id="download-obs-setup" type="button">Download setup bundle</button>
             </div>
           </form>
         </section>
@@ -607,6 +610,7 @@
                 <option value="prompt">Ask if duplicates are found</option>
                 <option value="skip">Skip existing keys</option>
                 <option value="overwrite">Overwrite existing keys</option>
+                <option value="replace">Replace the whole database (wipe current data first)</option>
               </select>
             </label>
           </div>

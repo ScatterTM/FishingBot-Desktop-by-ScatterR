@@ -83,7 +83,7 @@ local function make_launch_script(exe_path, pid_file, log_file)
     "    Add-Content -LiteralPath $logFile -Value ('[' + (Get-Date -Format s) + '] Fishingbot was already running; left it untouched.')",
     '    exit 0',
     '  }',
-    '  $process = Start-Process -FilePath $exePath -PassThru',
+    "  $process = Start-Process -FilePath $exePath -ArgumentList '--from-obs' -PassThru",
     '  Set-Content -LiteralPath $pidFile -Value ([string]$process.Id) -Encoding ASCII',
     "  Add-Content -LiteralPath $logFile -Value ('[' + (Get-Date -Format s) + '] Started Fishingbot PID ' + $process.Id + ' from ' + $exePath)",
     '} catch {',

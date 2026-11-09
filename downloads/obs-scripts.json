@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "release": "1.0.11-beta",
+  "assets": {
+    "obs-lua": {
+      "name": "fishingbot-autostart.lua",
+      "version": "1.0.11-beta",
+      "type": "OBS Lua script",
+      "compatibility": "OBS Studio on Windows with Lua scripting enabled",
+      "description": "Automatically launches Fishingbot Desktop when OBS starts. Includes a manual executable-path fallback.",
+      "size": 9614,
+      "sha256": "eed6d7dab2c37c871bde2cc2925bfb346191521bd0d42a48169fbe34594c7489"
+    },
+    "obs-setup-zip": {
+      "name": "Fishingbot-OBS-Startup-Setup.zip",
+      "version": "1.0.11-beta",
+      "type": "Setup bundle",
+      "compatibility": "OBS Studio on Windows with Lua scripting enabled",
+      "description": "The OBS startup Lua script and the installation guide packaged together.",
+      "size": 5330,
+      "sha256": "0aca7c57bcb8f0026c33ec3c679c56ceeb0931961a172f48a10957f46954044b"
+    }
+  }
+}

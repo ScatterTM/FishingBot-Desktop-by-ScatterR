@@ -23,5 +23,8 @@ Duplicate policy:
 - **Ask if duplicates are found**: if incoming keys collide with the current database or duplicate keys are found inside the file, the app prompts before continuing.
 - **Skip existing keys**: preserves current database keys; duplicate source key values use the first occurrence.
 - **Overwrite existing keys**: replaces current values; duplicate source key values use the last occurrence. List keys are replaced as a unit so stale trailing entries are removed.
+- **Replace the whole database**: deletes every current key and list row, then imports the file. A confirmation is shown first, and a backup is written to `data/backups/` before anything is deleted. The delete and the import run in one transaction, so a failed import restores the previous data.
+
+List rows are never merged or skipped. If a file gives the same list index more than once (or a flat row has no index), every row is kept in file order after the highest index already used for that list.
 
 The SQL importer parses only allow-listed insert records; it never opens the selected SQL file as an executable SQL script. Still, back up important data before import and only import files from a trusted source.

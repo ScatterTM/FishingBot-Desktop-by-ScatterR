@@ -734,18 +734,87 @@ function escapeHtml(value) {
 
 export function managerPage() {
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fishingbot Control Centre</title><link rel="stylesheet" href="/styles/overlay-alerts.css?v=19"><script src="/scripts/overlay-render.js?v=14"></script>
-<link rel="stylesheet" href="/styles/control-centre.css?v=1"><link rel="stylesheet" href="/styles/loot-table.css?v=1"></head><body><div id="app"><div class="login-wrap"><div class="login-card"><div class="eyebrow">Fishingbot</div><h1>Loading control centre…</h1><p class="muted">Checking local access.</p></div></div></div>
-<script src="/i18n/i18n.js"></script>
-<script src="/scripts/control-centre-loot.js?v=2"></script>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fishingbot Control Centre</title><link rel="stylesheet" href="/styles/overlay-alerts.css?v=19"><script defer src="/scripts/overlay-render.js?v=15"></script>
+<link rel="stylesheet" href="/styles/control-centre.css?v=2"><link rel="stylesheet" href="/styles/loot-table.css?v=1"></head><body><div id="app"><main class="boot-screen" data-boot-screen role="status" aria-live="polite" aria-atomic="true"><section class="boot-card"><div class="boot-brand"><span class="boot-brand-mark" aria-hidden="true">F</span><span>FISHINGBOT</span></div><div class="boot-eyebrow">CONTROL CENTRE</div><h1>Preparing your workspace</h1><p class="boot-copy">Starting local services and checking your session.</p><div class="boot-progress" aria-hidden="true"><span></span></div><div class="boot-status"><span class="boot-status-dot" aria-hidden="true"></span><span>Checking local access</span></div></section></main></div>
+<script>
+(function(){
+  var root=document.querySelector('[data-boot-screen]');
+  if(!root)return;
+  function requestHealth(path,done){
+    var xhr;
+    var complete=false;
+    var timer=window.setTimeout(function(){finish(false,0);},3000);
+    function finish(ok,status){
+      if(complete)return;
+      complete=true;
+      window.clearTimeout(timer);
+      done(ok,status);
+    }
+    try{
+      xhr=new XMLHttpRequest();
+      xhr.open('GET',path+(path.indexOf('?')===-1?'?':'&')+'_fb_probe='+new Date().getTime(),true);
+      xhr.setRequestHeader('Cache-Control','no-cache');
+      xhr.onreadystatechange=function(){
+        if(xhr.readyState===4)finish(xhr.status>=200&&xhr.status<300,xhr.status||0);
+      };
+      xhr.onerror=function(){finish(false,0);};
+      xhr.send(null);
+    }catch(error){finish(false,0);}
+  }
+  function serverReachable(done){
+    requestHealth('/local/health',function(ok,status){
+      if(ok){done(true);return;}
+      // Older 1.0.11 builds predate /local/health; retain their existing probe.
+      if(status===404||status===405){requestHealth('/local/status',function(legacyOk){done(legacyOk);});return;}
+      done(false);
+    });
+  }
+  window.setTimeout(function(){
+    if(!root.isConnected&&!document.documentElement.contains(root))return;
+    root.setAttribute('role','alert');
+    root.setAttribute('aria-live','assertive');
+    var card=root.querySelector('.boot-card');
+    if(!card)return;
+    serverReachable(function(reachable){
+      if(!root.isConnected&&!document.documentElement.contains(root))return;
+      var missing=[];
+      if(!window.fetch)missing.push('fetch');
+      if(!window.Promise)missing.push('Promise');
+      if(!window.URL)missing.push('URL');
+      if(!window.MutationObserver)missing.push('MutationObserver');
+      var title=reachable?(missing.length?'This browser is too old for the Control Centre':'The server is online, but the page did not start'):'Could not reach the local server';
+      var copy=reachable
+        ?(missing.length?'Fishingbot is running and reachable. This browser is missing '+missing.join(', ')+'. Open the same address in a current Edge, Chrome, Firefox or Safari browser.':'Fishingbot is running and reachable, but the Control Centre scripts did not finish starting. Refresh the page or open the recovery page to check the individual app links.')
+        :'The Control Centre could not contact its local backend at this address. Confirm Fishingbot is running, check the port in the server window, then retry. You can also try the IPv4 loopback address.';
+      card.innerHTML='<div class="boot-brand"><span class="boot-brand-mark" aria-hidden="true">F</span><span>FISHINGBOT</span></div><div class="boot-eyebrow">CONTROL CENTRE</div><h1></h1><p class="boot-copy"></p><div class="boot-actions"><button class="btn primary" type="button" data-boot-retry>Try again</button><a class="btn secondary" href="/local/apps">Open recovery page</a></div><p class="boot-footnote">The local service remains restricted to this computer. Your data has not been changed.</p>';
+      card.querySelector('h1').textContent=title;
+      card.querySelector('.boot-copy').textContent=copy;
+      var actions=card.querySelector('.boot-actions');
+      if(location.hostname==='localhost'&&location.port){
+        var ipv4=document.createElement('a');
+        ipv4.className='btn secondary';
+        ipv4.href=location.protocol+'//127.0.0.1:'+location.port+'/local';
+        ipv4.textContent='Try IPv4 loopback';
+        actions.appendChild(ipv4);
+      }
+      var retry=card.querySelector('[data-boot-retry]');
+      if(retry)retry.addEventListener('click',function(){window.location.reload();});
+    });
+  },16000);
+})();
+</script>
+<script defer src="/i18n/i18n.js"></script>
+<script defer src="/scripts/control-centre-loot.js?v=2"></script>
 <script>
 (function(){
 'use strict';
 const FB_ICONS=${JSON.stringify(ICON_PATHS)};
 function fbIcon(name,size){const d=FB_ICONS[name];if(!d)return '';const px=size||18;return '<svg class="ic" width="'+px+'" height="'+px+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="'+d+'"/></svg>';}
 function tr(key,fallback){const v=window.FishingbotI18n?window.FishingbotI18n.t(key):null;return v&&v!==key?v:fallback;}
-const app=document.getElementById('app');let settings=null;const validTabs=['overview','loot','game','twitch','extension','viewer','broadcaster'];let requestedTab=new URLSearchParams(location.search).get('tab');let currentTab=validTabs.includes(requestedTab)?requestedTab:'overview';
+const app=document.getElementById('app');let settings=null;const validTabs=['overview','loot','game','twitch','extension','viewer','broadcaster','obs'];const tabMatch=location.search.match(/[?&]tab=([^&]*)/);let requestedTab='';try{requestedTab=tabMatch?decodeURIComponent(tabMatch[1].replace(/\\+/g,' ')):'';}catch(_error){requestedTab='';}let currentTab=validTabs.includes(requestedTab)?requestedTab:'overview';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// One quiet retry for a transient failure (for example, the database is still opening at startup).
+async function callWithRetry(path){try{return await call(path);}catch(_first){await new Promise(function(resolve){setTimeout(resolve,1500);});return call(path);}}
 async function call(path,body){const opt=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};const r=await fetch('/local/admin/'+path,opt);let data={};try{data=await r.json()}catch(_){}if(!r.ok)throw new Error(data.error||('Request failed ('+r.status+')'));return data;}
 // Toasts: a stack at the bottom right. Hovering a toast pauses its timer. Identical messages
 // replace each other, and at most four are shown. notice(message, type) is the single entry point.
@@ -784,7 +853,7 @@ function notice(message,type){
 function loginFrame(title,desc,setup){app.innerHTML='<div class="login-wrap"><div class="login-card"><div class="eyebrow">Fishingbot / Local control</div><h1>'+title+'</h1><p class="muted">'+desc+'</p><form id="auth-form"><div class="field"><label>'+(setup?'Create admin password':'Admin password')+'</label><input id="password" type="password" minlength="'+(setup?12:1)+'" maxlength="128" autocomplete="'+(setup?'new-password':'current-password')+'" required></div>'+(setup?'<p class="small">Use at least 12 characters. This password protects streamer-only settings on this PC.</p>':'')+'<button class="btn primary" type="submit">'+(setup?'Create password':'Unlock control centre')+'</button></form></div></div>';
  document.getElementById('auth-form').addEventListener('submit',async e=>{e.preventDefault();const password=document.getElementById('password').value;try{await call(setup?'setup':'login',{password});await boot();}catch(err){notice(err.message,'error');}});
 }
-function shell(){const nav=[['overview','layout','page.overview','Overview'],['twitch','chat','page.twitch','Twitch bot'],['broadcaster','video','page.broadcaster','Broadcaster'],['game','sliders','page.game','Game settings'],['loot','package','page.loot','Loot table'],['extension','layers','page.extension','Twitch Extension'],['viewer','user','page.viewer','Viewers']];const items=nav.map(([id,ic,key,label])=>'<button type="button" data-tab="'+id+'" class="'+(id===currentTab?'active':'')+'">'+fbIcon(ic,18)+'<span data-i18n="'+key+'">'+label+'</span></button>').join('');app.innerHTML='<div class="shell"><aside class="rail"><nav class="nav">'+items+'</nav><div class="rail-foot"><span data-i18n="shell.footerA">LOCAL ADMIN SESSION</span><br><span data-i18n="shell.footerB">Settings stay on this PC.</span></div></aside><main class="main"><header class="top"><div class="top-text"><div class="title" id="page-title">Overview</div><div class="small" data-i18n="shell.lede">One place for game, viewer, broadcaster and application controls.</div></div><div class="actions top-actions"><button class="btn secondary" id="fb-lock" type="button">'+fbIcon('lock',16)+'<span data-i18n="button.lock">Lock</span></button><div class="status ok">● <span data-i18n="shell.session">LOCAL SESSION</span></div></div></header><section id="view"></section></main></div>';app.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{if(currentTab==='loot'&&b.dataset.tab!=='loot'){const pending=document.querySelector('#view [data-act="save"]:not([disabled])');if(pending)pending.click();}currentTab=b.dataset.tab;app.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));renderTab();}));if(window.FishingbotI18n){window.FishingbotI18n.loadLanguage(window.FishingbotI18n.getLanguage());}renderTab();}
+function shell(){const nav=[['overview','layout','page.overview','Overview'],['twitch','chat','page.twitch','Twitch bot'],['broadcaster','video','page.broadcaster','Broadcaster'],['game','sliders','page.game','Game settings'],['loot','package','page.loot','Loot table'],['extension','layers','page.extension','Twitch Extension'],['viewer','user','page.viewer','Viewers'],['obs','download','page.obs','OBS scripts']];const items=nav.map(([id,ic,key,label])=>'<button type="button" data-tab="'+id+'" class="'+(id===currentTab?'active':'')+'">'+fbIcon(ic,18)+'<span data-i18n="'+key+'">'+label+'</span></button>').join('');app.innerHTML='<div class="shell"><aside class="rail"><nav class="nav">'+items+'</nav><div class="rail-foot"><span data-i18n="shell.footerA">LOCAL ADMIN SESSION</span><br><span data-i18n="shell.footerB">Settings stay on this PC.</span></div></aside><main class="main"><header class="top"><div class="top-text"><div class="title" id="page-title">Overview</div><div class="small" data-i18n="shell.lede">One place for game, viewer, broadcaster and application controls.</div></div><div class="actions top-actions"><button class="btn secondary" id="fb-lock" type="button">'+fbIcon('lock',16)+'<span data-i18n="button.lock">Lock</span></button><div class="status ok">● <span data-i18n="shell.session">LOCAL SESSION</span></div></div></header><section id="view"></section></main></div>';app.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{if(currentTab==='loot'&&b.dataset.tab!=='loot'){const pending=document.querySelector('#view [data-act="save"]:not([disabled])');if(pending)pending.click();}currentTab=b.dataset.tab;app.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));renderTab();}));if(window.FishingbotI18n){window.FishingbotI18n.loadLanguage(window.FishingbotI18n.getLanguage());}renderTab();}
 function setView(html,title){document.getElementById('view').innerHTML=html;document.getElementById('page-title').textContent=title;}
 async function reconnect(){try{const r=await fetch('/local/bot/reconnect',{method:'POST'});const data=await r.json().catch(()=>({}));if(r.ok&&data.ok){await refreshSettings();renderTab();notice('Twitch reconnected.','good');return;}if(r.status===409||data.configured===false){const link=await call('bot-login-link');location.href=link.url;return;}throw new Error(data.error||'Reconnect failed.');}catch(error){notice(error.message,'error');}}
 async function disconnect(){if(!confirm('Disconnect the Twitch account from Fishingbot on this PC?'))return;try{const response=await fetch('/local/bot/disconnect',{method:'POST'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Could not disconnect Twitch.');await refreshSettings();renderTab();notice('Twitch account disconnected from this PC.','good');}catch(error){notice(error.message,'error');}}
@@ -799,6 +868,62 @@ function copyText(text){
     navigator.clipboard.writeText(text).then(()=>notice('Copied to clipboard.','good'),fail);
   }catch(_){fail();}
 }
+async function renderObsScripts(){
+  setView('<div class="card"><h2>OBS startup downloads</h2><p class="small">Loading verified script information…</p></div>','OBS scripts');
+  try {
+    const catalog=await call('obs-assets');
+    if(!catalog||!Array.isArray(catalog.assets))throw new Error('The OBS download manifest was not returned.');
+    const formatSize=value=>{const n=Number(value)||0;return n<1024?n+' B':(n/1024).toFixed(1)+' KB';};
+    const cards=catalog.assets.map(asset=>'<article class="card obs-download-card"><div class="obs-download-top"><div><h2>'+esc(asset.type)+'</h2><strong>'+esc(asset.name)+'</strong></div><span class="status ok">● Verified</span></div><p class="small">'+esc(asset.description)+'</p><p class="small">Version '+esc(asset.version)+' · '+formatSize(asset.size)+' · '+esc(asset.compatibility)+'</p><p class="small">SHA-256 <code>'+esc(asset.sha256)+'</code></p><div class="obs-download-actions"><button class="btn" type="button" data-obs-download="'+esc(asset.id)+'">Download '+esc(asset.type)+'</button><progress max="100" value="0" hidden aria-label="Download progress" data-obs-progress="'+esc(asset.id)+'"></progress><span class="small" data-obs-status="'+esc(asset.id)+'" role="status">Ready</span></div></article>').join('');
+    setView('<div class="ov"><section class="card"><h2>OBS scripts · '+esc(catalog.release)+'</h2><p class="small">Choose the Lua script for a direct install, or the setup ZIP for the script and instructions. Fishingbot verifies each file against its SHA-256 manifest before it is offered.</p></section>'+cards+'<section class="card"><h2>Install help</h2><ol><li>Open OBS Studio and choose <strong>Tools → Scripts</strong>.</li><li>Click <strong>+</strong> and select <code>fishingbot-autostart.lua</code>.</li><li>Check the script properties and enable launch when OBS starts.</li></ol><p class="small">If a download fails, retry it. If verification fails, do not use the file; reinstall or update Fishingbot and try again.</p></section></div>','OBS scripts');
+    document.querySelectorAll('[data-obs-download]').forEach(button=>button.addEventListener('click',()=>downloadObsAsset(button.dataset.obsDownload)));
+  } catch(error) {
+    setView('<div class="card"><h2>OBS downloads unavailable</h2><p class="notice error">'+esc(error.message||'Could not load OBS download metadata.')+'</p><button class="btn" type="button" id="obs-retry">Retry</button></div>','OBS scripts');
+    document.getElementById('obs-retry').addEventListener('click',renderObsScripts);
+  }
+}
+function downloadObsAsset(id){
+  const progress=document.querySelector('[data-obs-progress="'+id+'"]');
+  const status=document.querySelector('[data-obs-status="'+id+'"]');
+  const button=document.querySelector('[data-obs-download="'+id+'"]');
+  if(!progress||!status||!button)return;
+  button.disabled=true;progress.hidden=false;progress.value=0;status.textContent='Starting download…';
+  const request=new XMLHttpRequest();request.open('GET','/local/obs-download/'+encodeURIComponent(id),true);request.responseType='blob';request.timeout=60000;
+  request.onprogress=event=>{if(event.lengthComputable){progress.value=Math.round(event.loaded/event.total*100);status.textContent='Downloading '+progress.value+'%';}else status.textContent='Downloading…';};
+  request.onload=async()=>{
+    if(request.status!==200){status.textContent='Download failed (HTTP '+request.status+'). Retry.';button.disabled=false;return;}
+    try{
+      const expected=request.getResponseHeader('X-Content-SHA256')||'';
+      const version=request.getResponseHeader('X-Asset-Version')||'';
+      if(!/^[a-f0-9]{64}$/i.test(expected))throw new Error('The server did not provide a valid SHA-256 checksum.');
+      if(window.crypto&&window.crypto.subtle){
+        const bytes=await new Promise((resolve,reject)=>{
+          if(request.response&&typeof request.response.arrayBuffer==='function'){
+            request.response.arrayBuffer().then(resolve,reject);
+            return;
+          }
+          const reader=new FileReader();
+          reader.onload=()=>resolve(reader.result);
+          reader.onerror=()=>reject(reader.error||new Error('Could not read the downloaded file for verification.'));
+          reader.readAsArrayBuffer(request.response);
+        });
+        const digest=await window.crypto.subtle.digest('SHA-256',bytes);
+        const actual=Array.from(new Uint8Array(digest)).map(value=>value.toString(16).padStart(2,'0')).join('');
+        if(actual.toLowerCase()!==expected.toLowerCase())throw new Error('The downloaded file did not pass SHA-256 verification.');
+      }
+      const objectUrl=URL.createObjectURL(request.response);
+      const link=document.createElement('a');link.href=objectUrl;link.download=id==='obs-lua'?'fishingbot-autostart.lua':'Fishingbot-OBS-Startup-Setup.zip';
+      document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
+      progress.value=100;status.textContent='Verified and saved · '+(version||'current');
+    }catch(error){status.textContent='Verification failed: '+(error.message||'unknown error');notice(status.textContent,'error');}
+    finally{button.disabled=false;}
+  };
+  request.onerror=()=>{status.textContent='Network error. Check the local server and retry.';button.disabled=false;};
+  request.onabort=()=>{status.textContent='Download cancelled.';button.disabled=false;};
+  request.ontimeout=()=>{status.textContent='Download timed out. Retry.';button.disabled=false;};
+  try{request.send();}catch(error){status.textContent='Could not start download: '+(error.message||'unknown error');button.disabled=false;}
+}
+
 function renderOverview(){
   const bot=settings.bot||{};
   const m=settings.systemMetrics||{};
@@ -1088,8 +1213,8 @@ let vtPendingImport=null;
 // accents or spacing, so an exact-match miss no longer falls back to Common.
 // When the name is not in the catalogue, the [RARITY] suffix decides the label
 // and the item is marked as unmatched so it can be checked.
-function normName(v){return String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019]/g,"'").replace(/\s+/g,' ').trim().toLowerCase();}
-function parseInvItem(raw){const text=String(raw??'').trim();const m=text.match(/^(.*?)\s*(?:\[([^\[\]()]+)\]|\(([^()]*)\))\s*$/i);const label=m?String(m[2]??m[3]??'').trim().toLowerCase():'';const suffix=m&&settings.tiers.find(t=>t.id===label||String(t.name).toLowerCase()===label);return suffix?{name:m[1].trim(),suffixId:suffix.id}:{name:text,suffixId:''};}
+function normName(v){return String(v??'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').replace(/[\\u2018\\u2019]/g,"'").replace(/\\s+/g,' ').trim().toLowerCase();}
+function parseInvItem(raw){const text=String(raw??'').trim();const m=text.match(/^(.*?)\\s*(?:\\[([^\\[\\]()]+)\\]|\\(([^()]*)\\))\\s*$/i);const label=m?String(m[2]??m[3]??'').trim().toLowerCase():'';const suffix=m&&settings.tiers.find(t=>t.id===label||String(t.name).toLowerCase()===label);return suffix?{name:m[1].trim(),suffixId:suffix.id}:{name:text,suffixId:''};}
 function invRarity(raw){const parsed=parseInvItem(raw);const want=normName(parsed.name);const byName=settings.tiers.find(t=>(t.items||[]).some(i=>normName(i)===want));if(byName)return byName.id;return parsed.suffixId||'unmatched';}
 function baseFishName(item){const text=String(item||'').trim();const parsed=parseInvItem(text);return parsed.suffixId?parsed.name:text;}
 function viewerLogin(){const v=(document.getElementById('vt-login')?.value||'').trim().replace(/^@+/,'').toLowerCase();if(!/^[a-z0-9_]{1,25}$/.test(v))throw new Error('Enter a valid Twitch login (letters, numbers and underscores).');return v;}
@@ -1540,13 +1665,13 @@ function setNumberLimit(input,max){
 }
 
 window.addEventListener('fishingbot:language-changed',()=>{if(settings&&typeof renderTab==='function'){document.documentElement.lang=(window.FishingbotI18n&&window.FishingbotI18n.getLanguage())||'en';renderTab();}});
-function renderTab(){if(!settings)return;if(currentTab==='loot')renderLoot();else if(currentTab==='game')renderGame();else if(currentTab==='twitch')renderTwitch();else if(currentTab==='extension')renderExtension();else if(currentTab==='viewer')renderViewer();else if(currentTab==='broadcaster')renderBroadcaster();else renderOverview();}
+function renderTab(){if(!settings)return;if(currentTab==='loot')renderLoot();else if(currentTab==='game')renderGame();else if(currentTab==='twitch')renderTwitch();else if(currentTab==='extension')renderExtension();else if(currentTab==='viewer')renderViewer();else if(currentTab==='broadcaster')renderBroadcaster();else if(currentTab==='obs')renderObsScripts();else renderOverview();}
 async function refreshSettings(){settings=await call('settings');}
 window.fishingbotRefreshActiveTab=async function(){try{await refreshSettings();renderTab();}catch(e){notice('Could not refresh this tab: '+e.message,'error');}};
-async function boot(){try{const state=await call('state');if(state.setupRequired){loginFrame('Create your admin password','Set up the password that protects all streamer-only controls on this computer.',true);return;}if(!state.authenticated){loginFrame('Streamer sign-in','Enter your local admin password to manage Fishingbot.',false);return;}await refreshSettings();shell();watchNumberInputs();
+async function boot(){try{const state=await callWithRetry('state');if(state.setupRequired){loginFrame('Create your admin password','Set up the password that protects all streamer-only controls on this computer.',true);return;}if(!state.authenticated){loginFrame('Streamer sign-in','Enter your local admin password to manage Fishingbot.',false);return;}settings=await callWithRetry('settings');shell();watchNumberInputs();
     // Game settings save as they change. A value the server rejects stays on screen without a notice on every change.
-    document.getElementById('view').addEventListener('change',(event)=>{if(currentTab!=='game')return;if(String(event.target.id||'').startsWith('price-')){if(window.savePricesNow)window.savePricesNow(true);}else if(window.saveGameSettingsNow)window.saveGameSettingsNow(true);});document.getElementById('fb-lock').addEventListener('click',async()=>{try{await call('logout',{});}catch(_){}location.reload();});}catch(e){app.innerHTML='<div class="login-wrap"><div class="login-card"><h1>Could not load control centre</h1><p class="notice error">'+esc(e.message)+'</p><button class="btn" onclick="location.reload()">Retry</button></div></div>';}}
-boot();
+    document.getElementById('view').addEventListener('change',(event)=>{if(currentTab!=='game')return;if(String(event.target.id||'').startsWith('price-')){if(window.savePricesNow)window.savePricesNow(true);}else if(window.saveGameSettingsNow)window.saveGameSettingsNow(true);});document.getElementById('fb-lock').addEventListener('click',async()=>{try{await call('logout',{});}catch(_){}location.reload();});}catch(e){app.innerHTML='<div class="login-wrap"><div class="login-card" id="fb-boot-error"><h1>Could not load control centre</h1><p class="notice error">'+esc(e.message)+'</p><button class="btn" onclick="location.reload()">Retry</button></div></div>';}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 </script></body></html>`;
 }

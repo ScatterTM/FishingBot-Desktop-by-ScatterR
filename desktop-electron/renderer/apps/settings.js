@@ -133,24 +133,46 @@
     }
 
     // Downloadable OBS resources use the native Save dialog and report its result here.
+    (async () => {
+      const catalogHost = q('#obs-download-catalog');
+      try {
+        const result = await api.obsCatalog();
+        if (!result.ok) throw new Error(result.error || 'OBS metadata unavailable.');
+        catalogHost.replaceChildren();
+        for (const asset of result.assets) {
+          const card = document.createElement('div');
+          card.className = 'startup-asset';
+          const name = document.createElement('strong');
+          name.textContent = asset.name;
+          const version = document.createElement('span');
+          version.textContent = `v${asset.version} · ${Math.ceil(asset.size / 1024)} KB · ${asset.type}`;
+          const integrity = document.createElement('small');
+          integrity.textContent = `SHA-256 verified · ${asset.compatibility}`;
+          card.append(name, version, integrity);
+          catalogHost.append(card);
+        }
+      } catch (error) {
+        catalogHost.textContent = `Script details unavailable: ${error.message || 'unknown error'}. Downloads will still verify before saving.`;
+      }
+    })();
     q('#download-obs-lua').addEventListener('click', async () => {
-      say('Choose where to save the OBS startup script.', 'muted');
+      say('Verifying OBS startup script, then opening the Save dialog…', 'muted');
       try {
         const result = await api.downloadAsset('obs-lua');
         if (!result.ok) return say(`Could not save the download: ${result.error || 'unknown error'}`, 'bad');
         if (result.cancelled) return say('Download cancelled. No file was saved.', 'muted');
-        say('OBS startup script saved.');
+        say(`OBS startup script saved and verified (${result.version || 'current'}).`);
       } catch (error) {
         say(`Could not save the download: ${error.message || 'unknown error'}`, 'bad');
       }
     });
     q('#download-obs-setup').addEventListener('click', async () => {
-      say('Choose where to save the setup ZIP.', 'muted');
+      say('Verifying setup ZIP, then opening the Save dialog…', 'muted');
       try {
         const result = await api.downloadAsset('obs-setup-zip');
         if (!result.ok) return say(`Could not save the download: ${result.error || 'unknown error'}`, 'bad');
         if (result.cancelled) return say('Download cancelled. No file was saved.', 'muted');
-        say('Setup ZIP saved.');
+        say(`Setup bundle saved and verified (${result.version || 'current'}).`);
       } catch (error) {
         say(`Could not save the download: ${error.message || 'unknown error'}`, 'bad');
       }
@@ -449,6 +471,11 @@
     }
     async function startDatabaseImport(policy) {
       if (!importPath) return;
+      if (policy === 'replace' && !window.confirm('Replace the whole database?\n\nEvery current player record is deleted, then this file is imported. A backup of the current database is saved first in data/backups/. Continue?')) {
+        importStatus.textContent = 'Import cancelled. Nothing was changed.';
+        importStatus.className = 'muted';
+        return;
+      }
       clearImportErrors();
       importDecisionPending = false;
       importStart.disabled = true;

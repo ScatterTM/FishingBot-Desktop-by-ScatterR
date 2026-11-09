@@ -16,6 +16,22 @@ function readStatus(file) {
   catch { return null; }
 }
 
+// Status files survive restarts and are written atomically so the UI never reads a partial JSON file.
+function writeStatus(file, value) {
+  const temp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temp, JSON.stringify(value), { flag: 'wx' });
+    try { fs.renameSync(temp, file); }
+    catch (error) {
+      // Windows may reject replacing an existing destination; retain the old valid file until the new one is ready.
+      if (!fs.existsSync(file)) throw error;
+      const swap = `${file}.swap`;
+      try { fs.copyFileSync(temp, swap); fs.renameSync(swap, file); }
+      finally { try { fs.rmSync(swap, { force: true }); } catch {} }
+    }
+  } finally { try { fs.rmSync(temp, { force: true }); } catch {} }
+}
+
 function createDbImportManager({ root, server, getWindow }) {
   const jobsDir = path.join(root, 'data', 'import-jobs');
   const jobs = new Map();
@@ -44,7 +60,7 @@ function createDbImportManager({ root, server, getWindow }) {
     if (!ALLOWED_EXTENSIONS.has(extension)) throw new Error('Choose a JSON, CSV, or SQL export file.');
     if (!fs.existsSync(source) || !fs.statSync(source).isFile()) throw new Error('The selected import file no longer exists.');
     if (fs.statSync(source).size > MAX_FILE_BYTES) throw new Error('The selected file is larger than the 256 MiB limit.');
-    if (!['skip', 'overwrite', 'prompt'].includes(policy)) throw new Error('Duplicate policy must be skip, overwrite, or prompt.');
+    if (!['skip', 'overwrite', 'prompt', 'replace'].includes(policy)) throw new Error('Duplicate policy must be skip, overwrite, prompt, or replace.');
     fs.mkdirSync(jobsDir, { recursive: true });
 
     const jobId = crypto.randomUUID();
@@ -55,7 +71,7 @@ function createDbImportManager({ root, server, getWindow }) {
       rowsSucceeded: 0, rowsFailed: 0, rowsSkipped: 0, percent: 0, etaMs: null, errors: [], rolledBack: false,
       message: 'Validating file before import.', startedAt: Date.now()
     };
-    fs.writeFileSync(statusPath, JSON.stringify(initial));
+    writeStatus(statusPath, initial);
     const request = { jobId, sourcePath: source, dbPath, statusPath, cancelPath, policy };
     const nodeBin = server?.nodeBin || process.env.FISHINGBOT_NODE || 'node';
     const child = spawn(nodeBin, ['--disable-warning=ExperimentalWarning', path.join(root, 'lib', 'db-import-worker.mjs')], {
@@ -72,21 +88,21 @@ function createDbImportManager({ root, server, getWindow }) {
     jobs.set(jobId, { child, statusPath, cancelPath, sourcePath: source });
     child.on('error', (error) => {
       const old = readStatus(statusPath) || initial;
-      fs.writeFileSync(statusPath, JSON.stringify({ ...old, phase: 'failed', rowsFailed: 1, rolledBack: true, errors: [{ line: 1, message: `Could not start the Node.js import worker: ${error.message}` }], message: 'Import worker failed to start.', finishedAt: Date.now() }));
+      writeStatus(statusPath, { ...old, phase: 'failed', rowsFailed: 1, rolledBack: true, errors: [{ line: 1, message: `Could not start the Node.js import worker: ${error.message}` }], message: 'Import worker failed to start.', finishedAt: Date.now() });
       jobs.delete(jobId);
     });
     child.on('close', (code) => {
       const status = readStatus(statusPath);
       if (status && ['validating', 'importing'].includes(status.phase)) {
-        fs.writeFileSync(statusPath, JSON.stringify({
+        writeStatus(statusPath, {
           ...status, phase: code === 0 ? 'completed' : 'failed',
           percent: code === 0 ? 100 : status.percent,
           rowsFailed: code === 0 ? 0 : 1,
           rowsSucceeded: code === 0 ? status.rowsSucceeded : 0,
           rolledBack: code !== 0,
           errors: code === 0 ? [] : [{ line: status.currentLine || 1, message: stderr.trim() || `Import worker exited with code ${code}.` }],
-          message: code === 0 ? 'Import completed.' : 'Import worker exited unexpectedly; the transaction was rolled back.', finishedAt: Date.now()
-        }));
+          message: code === 0 ? 'Import completed and saved to the database.' : 'Import worker exited unexpectedly; the transaction was rolled back.', finishedAt: Date.now()
+        });
       }
       jobs.delete(jobId);
     });

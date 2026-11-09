@@ -7,6 +7,7 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu, powerMonitor, screen, session, shell } = require('electron');
 const { execFile } = require('node:child_process');
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const path = require('node:path');
 const { ServerManager } = require('./server-manager');
 const { AdminClient } = require('./admin');
@@ -22,6 +23,7 @@ const DESKTOP_STRINGS = require('./i18n/desktop.json');
 // The Fishingbot folder: holds local/, .env and data/. Installed: the exe's folder.
 // Name and logo shown by Windows (taskbar, Alt+Tab, window icon). Packaged builds use the same name.
 const APP_NAME = 'Fishingbot Desktop';
+
 // Windows reads the window icon itself, and it cannot read files inside app.asar. Packaged builds
 // therefore ship a copy next to the app (package.json extraResources) and use that one.
 const APP_ICON = app.isPackaged
@@ -49,6 +51,24 @@ const ROOT = path.resolve(
   process.env.FISHINGBOT_ROOT ||
     (app.isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '..')),
 );
+
+const OBS_ASSET_SOURCES = Object.freeze({
+  'obs-lua': path.join(ROOT, 'obs-scripts', 'fishingbot-autostart.lua'),
+  'obs-setup-zip': path.join(ROOT, 'downloads', 'Fishingbot-OBS-Startup-Setup.zip'),
+});
+function readObsAssetCatalog() {
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'downloads', 'obs-scripts.json'), 'utf8'));
+  if (!manifest || manifest.schema !== 1 || !manifest.assets) throw new Error('The OBS download manifest is invalid.');
+  const assets = Object.entries(OBS_ASSET_SOURCES).map(([id, source]) => {
+    const meta = manifest.assets[id];
+    if (!meta || !/^[a-f0-9]{64}$/i.test(String(meta.sha256 || ''))) throw new Error(`OBS metadata is invalid for ${id}.`);
+    const stat = fs.statSync(source);
+    const digest = crypto.createHash('sha256').update(fs.readFileSync(source)).digest('hex');
+    if (digest.toLowerCase() !== meta.sha256.toLowerCase() || stat.size !== Number(meta.size)) throw new Error(`${meta.name || id} failed its SHA-256 integrity check.`);
+    return { id, ...meta, sha256: digest, size: stat.size };
+  });
+  return { release: String(manifest.release || ''), assets };
+}
 
 // The Startup setting also supports the legacy background watcher: if enabled, the desktop
 // registers to start at sign-in (minimised) and starts the server on an OBS process transition.
@@ -96,8 +116,6 @@ function loadUiStrings(root, desktopStrings) {
 }
 const STRINGS = loadUiStrings(ROOT, DESKTOP_STRINGS);
 
-// Set when the app is really quitting (before-quit). Closing the window while the OBS start is on only minimises it.
-let appQuitting = false;
 let stopObsWatcher = null;
 const SECTION_KEYS = {
   interface: ['language', 'autoScrollLog', 'confirmStopServer'],
@@ -197,14 +215,56 @@ async function storeSetCookies(setCookies, base) {
 }
 
 async function sessionCookieHeader(base) {
-  const cookies = await ccSession().cookies.get({ url: base + '/local' });
+  const ses = ccSession();
+  let cookies = await ses.cookies.get({ url: base + '/local' });
+  // Older desktop releases stored the local admin cookie against localhost.
+  // If DNS fallback selected an explicit loopback address, copy only the
+  // signed local admin session to that same-machine origin before webviews load.
+  if (!cookies.some((cookie) => cookie.name === 'fb_local_admin')) {
+    let candidates = [];
+    try {
+      const target = new URL(base);
+      const port = target.port ? `:${target.port}` : '';
+      candidates = [
+        `http://localhost${port}`,
+        `http://127.0.0.1${port}`,
+        `http://[::1]${port}`,
+      ].filter((candidate) => candidate !== base);
+    } catch { /* server.base is always a trusted loopback URL */ }
+    for (const legacyBase of candidates) {
+      const previous = await ses.cookies.get({ url: legacyBase + '/local' }).catch(() => []);
+      const sessionCookie = previous.find((cookie) => cookie.name === 'fb_local_admin');
+      if (!sessionCookie) continue;
+      const migrated = {
+        url: base + (sessionCookie.path || '/local'),
+        name: sessionCookie.name,
+        value: sessionCookie.value,
+        path: sessionCookie.path || '/local',
+        httpOnly: !!sessionCookie.httpOnly,
+        secure: !!sessionCookie.secure,
+        sameSite: sessionCookie.sameSite || 'strict',
+      };
+      if (Number.isFinite(sessionCookie.expirationDate)) migrated.expirationDate = sessionCookie.expirationDate;
+      await ses.cookies.set(migrated).catch(() => {});
+      cookies = await ses.cookies.get({ url: base + '/local' });
+      if (cookies.some((cookie) => cookie.name === 'fb_local_admin')) break;
+    }
+  }
   return cookies.map((c) => `${c.name}=${encodeURIComponent(c.value)}`).join('; ');
 }
 
 async function clearSession(base) {
   const ses = ccSession();
-  const cookies = await ses.cookies.get({ url: base + '/local' });
-  for (const c of cookies) await ses.cookies.remove(base + '/local', c.name).catch(() => {});
+  let candidates = [base];
+  try {
+    const target = new URL(base);
+    const port = target.port ? `:${target.port}` : '';
+    candidates = [...new Set([base, `http://localhost${port}`, `http://127.0.0.1${port}`, `http://[::1]${port}`])];
+  } catch { /* server.base is always a trusted loopback URL */ }
+  for (const candidate of candidates) {
+    const cookies = await ses.cookies.get({ url: candidate + '/local' }).catch(() => []);
+    for (const cookie of cookies) await ses.cookies.remove(candidate + '/local', cookie.name).catch(() => {});
+  }
 }
 
 async function authState(server) {
@@ -257,22 +317,6 @@ function hardenWebview(event, webPreferences, params) {
 function blockNonWebNavigation(event, url) {
   if (!isWebUrl(url) && url !== 'about:blank') event.preventDefault();
 }
-function isTwitchActivationUrl(value) {
-  try {
-    const target = new URL(value);
-    return target.protocol === 'https:'
-      && ['twitch.tv', 'www.twitch.tv'].includes(target.hostname.toLowerCase())
-      && /^\/activate\/?$/i.test(target.pathname);
-  } catch {
-    return false;
-  }
-}
-function openTwitchActivation(value) {
-  if (!isTwitchActivationUrl(value)) return false;
-  shell.openExternal(value).catch((error) => startupLog(`Could not open Twitch activation: ${error.message}`));
-  return true;
-}
-
 function registerAuthIpc(server, admin) {
   handleTrusted('auth:state', safe(() => authState(server)));
   handleTrusted(
@@ -456,6 +500,7 @@ function registerIpc(server, admin) {
   handleTrusted('app:info', () => ({
     version: app.getVersion(),
     port: server.port,
+    base: server.base,
     tabs: TABS,
     tabIds: TAB_IDS,
   }));
@@ -466,42 +511,49 @@ function registerIpc(server, admin) {
   handleTrusted('server:start', safe(() => server.start()));
   handleTrusted('server:stop', safe(() => server.stop()));
   handleTrusted('server:restart', safe(() => server.restart()));
+  // Re-checks the server now (instead of waiting for the next 3 second poll) and returns its state.
+  handleTrusted('server:refresh', async () => {
+    await server.poll();
+    return server.state;
+  });
   handleTrusted(
     'twitch:reconnect',
     safe(async () => {
       if (!server.state.online) throw new Error('The server is not running.');
       const reply = await server.post('/local/bot/reconnect');
-      if (!reply.ok) throw new Error(reply.body?.error || `HTTP ${reply.status}`);
+      if (reply.ok) return { connected: true };
+      if (reply.status === 409) {
+        const cookie = await sessionCookieHeader(server.base);
+        const response = await fetch(`${server.base}/local/admin/bot-login-link`, {
+          headers: cookie ? { Cookie: cookie } : {},
+          signal: AbortSignal.timeout(5000),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.url) throw new Error(data.error || `Twitch sign-in could not start (HTTP ${response.status}).`);
+        return { authUrl: data.url, connected: false };
+      }
+      throw new Error(reply.body?.error || `HTTP ${reply.status}`);
     }),
   );
 
   handleTrusted('settings:get', () => settings.view(ROOT));
+  handleTrusted('obs:catalog', safe(async () => readObsAssetCatalog()));
   handleTrusted('download:asset', safe(async (kind) => {
-    const assets = {
-      'obs-lua': {
-        source: path.join(ROOT, 'obs-scripts', 'fishingbot-autostart.lua'),
-        name: 'fishingbot-autostart.lua',
-        title: tr('Save OBS startup script'),
-        filters: [{ name: tr('Lua script'), extensions: ['lua'] }],
-      },
-      'obs-setup-zip': {
-        source: path.join(ROOT, 'downloads', 'Fishingbot-OBS-Startup-Setup.zip'),
-        name: 'Fishingbot-OBS-Startup-Setup.zip',
-        title: tr('Save OBS setup ZIP'),
-        filters: [{ name: tr('ZIP archive'), extensions: ['zip'] }],
-      },
-    };
-    const asset = assets[String(kind || '')];
-    if (!asset) throw new Error('Unknown download.');
-    if (!fs.existsSync(asset.source)) throw new Error(`The download file is missing: ${asset.name}`);
+    const catalog = readObsAssetCatalog();
+    const meta = catalog.assets.find((entry) => entry.id === String(kind || ''));
+    if (!meta) throw new Error('Unknown download.');
+    const source = OBS_ASSET_SOURCES[meta.id];
+    const buffer = await fs.promises.readFile(source);
+    const digest = crypto.createHash('sha256').update(buffer).digest('hex');
+    if (digest !== meta.sha256 || buffer.length !== meta.size) throw new Error(`${meta.name} failed its SHA-256 integrity check. Reinstall or update Fishingbot.`);
     const choice = await dialog.showSaveDialog(mainWin, {
-      title: asset.title,
-      defaultPath: path.join(app.getPath('downloads'), asset.name),
-      filters: asset.filters,
+      title: meta.id === 'obs-lua' ? tr('Save OBS startup script') : tr('Save OBS setup ZIP'),
+      defaultPath: path.join(app.getPath('downloads'), meta.name),
+      filters: [{ name: meta.id === 'obs-lua' ? tr('Lua script') : tr('ZIP archive'), extensions: [meta.id === 'obs-lua' ? 'lua' : 'zip'] }],
     });
     if (choice.canceled || !choice.filePath) return { cancelled: true };
-    await fs.promises.copyFile(asset.source, choice.filePath);
-    return { savedPath: choice.filePath };
+    await fs.promises.writeFile(choice.filePath, buffer, { flag: 'w' });
+    return { savedPath: choice.filePath, version: meta.version, sha256: meta.sha256, size: meta.size };
   }));
   // Backups: the list in data/backups, and "Back up now" (the server makes the copy on its next check).
   handleTrusted('backup:list', safe(async () => {
@@ -876,6 +928,70 @@ function applyUiScale(win) {
   win.setMinimumSize(Math.round(MIN_WINDOW.width * factor), Math.round(MIN_WINDOW.height * factor));
 }
 
+// Set when the OBS launcher starts the app. The desktop shell stays hidden; the Control Centre
+// Overview opens in its own window instead (see openStandaloneControlCentre).
+const STARTED_BY_OBS = process.argv.includes('--from-obs');
+let standaloneWin = null;
+
+// OBS start: a normal Control Centre window on the shared sign-in partition, so the admin
+// sign-in carries over. It loads once the server is up and reloads if the server restarts.
+function openStandaloneControlCentre(server) {
+  const area = screen.getPrimaryDisplay().workAreaSize;
+  const win = new BrowserWindow({
+    width: Math.min(1280, Math.floor(area.width)),
+    height: Math.min(840, Math.floor(area.height)),
+    minWidth: 900,
+    minHeight: 600,
+    title: 'Fishingbot Control Centre',
+    icon: windowIcon(),
+    backgroundColor: '#101214',
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: { partition: CC_PARTITION, contextIsolation: true, sandbox: true, nodeIntegration: false },
+  });
+  standaloneWin = win;
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  denyPermissions(win.webContents.session);
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!server.base || !url.startsWith(server.base)) event.preventDefault();
+  });
+
+  let shown = false;
+  const show = () => {
+    if (shown || win.isDestroyed()) return;
+    shown = true;
+    bringToFront(win);
+    startupLog('Control Centre window shown (started by the OBS launcher).');
+  };
+  const loadPage = async () => {
+    if (win.isDestroyed() || !server.online || !server.base) return;
+    const base = server.base;
+    await sessionCookieHeader(base).catch(() => '');
+    if (win.isDestroyed()) return;
+    win.loadURL(`${base}/local?tab=overview`).catch(() => {});
+  };
+  win.webContents.on('did-finish-load', show);
+  win.webContents.on('did-fail-load', (_event, code, _description, _url, isMainFrame) => {
+    if (!isMainFrame || code === -3) return;
+    show();
+    // The page failed (for example, the server was restarting): try again shortly.
+    setTimeout(loadPage, 3000);
+  });
+  // Shows the window even if the page never reports, so it is never invisible.
+  setTimeout(show, 8000);
+
+  const onOnline = () => loadPage();
+  server.on('online', onOnline);
+  win.on('closed', () => {
+    server.off('online', onOnline);
+    standaloneWin = null;
+    // Closing the Control Centre window quits the app, as closing the shell does.
+    app.quit();
+  });
+  loadPage();
+  return win;
+}
+
 function createMainWindow(preload, renderer) {
   // The default window size is capped to the screen, so a 1366 x 768 laptop starts with a window it can show.
   const area = screen.getPrimaryDisplay().workAreaSize;
@@ -918,6 +1034,10 @@ function createMainWindow(preload, renderer) {
     if (revealed) return;
     revealed = true;
     clearTimeout(fallback);
+    if (STARTED_BY_OBS) {
+      startupLog(`Desktop shell kept hidden: started by the OBS launcher (${reason}).`);
+      return;
+    }
     // Started by Windows at sign-in (Start with Windows, or the OBS-watcher option): the window opens
     // minimised so it does not interrupt the user. A normal launch is shown as before.
     if (app.getLoginItemSettings().wasOpenedAtLogin) {
@@ -944,15 +1064,6 @@ function createMainWindow(preload, renderer) {
     win.webContents.reloadIgnoringCache();
   });
 
-  win.on('close', (event) => {
-    // When OBS-triggered server start is enabled, keep the lightweight desktop host alive in
-    // the background so it can detect OBS opening. The user's Quit command still exits normally.
-    if (!appQuitting && settings.view(ROOT).startup.startWhenObsStarts) {
-      event.preventDefault();
-      win.minimize();
-      startupLog('Window close requested while OBS auto-start is enabled; minimised to keep the OBS watcher alive.');
-    }
-  });
   win.on('closed', () => {
     clearTimeout(fallback);
     mainWin = null;
@@ -1014,19 +1125,15 @@ async function main() {
     if (contents.getType() !== 'webview') return;
     denyPermissions(contents.session);
     contents.on('will-navigate', (event, url) => {
-      // Some Twitch builds navigate the current webview instead of calling window.open.
-      // Device approval must leave the embedded view, or Twitch silently blocks the flow.
-      if (openTwitchActivation(url)) { event.preventDefault(); return; }
+      // Twitch device approval stays inside the Fishingbot webview. The activation URL
+      // carries the device code, so no cross-origin form injection or system browser is needed.
       blockNonWebNavigation(event, url);
     });
-    contents.on('will-redirect', (event, url) => {
-      if (openTwitchActivation(url)) { event.preventDefault(); return; }
-      blockNonWebNavigation(event, url);
-    });
+    contents.on('will-redirect', (event, url) => blockNonWebNavigation(event, url));
     contents.setWindowOpenHandler(({ url }) => {
-      // Other Twitch builds open the device approval page in a new window.
-      if (openTwitchActivation(url)) return { action: 'deny' };
-      send('web:open', url);
+      // Only HTTP(S) pages may be opened in another in-app webview. This keeps
+      // Twitch activation inside Fishingbot without accepting file:/javascript: popups.
+      if (isWebUrl(url)) send('web:open', url);
       return { action: 'deny' };
     });
   });
@@ -1039,13 +1146,29 @@ async function main() {
   server.ramLimitMb = settings.view(ROOT).performance.ramLimitMb;
   const admin = new AdminClient(server);
 
-  server.on('state', (state) => send('server:state', state));
+  // Resolve/migrate the signed local admin cookie before the renderer starts a
+  // webview on a newly selected loopback origin. Without this, the page could
+  // race the cookie copy and briefly show a false sign-in screen.
+  let preparedControlCentreBase = '';
+  server.on('state', (state) => {
+    if (!state.online || !state.base || state.base === preparedControlCentreBase) {
+      if (!state.online) preparedControlCentreBase = '';
+      send('server:state', state);
+      return;
+    }
+    const targetBase = state.base;
+    sessionCookieHeader(targetBase).catch(() => '').finally(() => {
+      preparedControlCentreBase = targetBase;
+      send('server:state', state);
+    });
+  });
   server.on('log', (entry) => send('log:line', entry));
   server.on('online', () => send('server:online', {}));
   registerIpc(server, admin);
 
   mainWin = createMainWindow(path.join(__dirname, 'preload.js'), path.join(__dirname, 'renderer'));
   startupLog('Main window created.');
+  if (STARTED_BY_OBS) openStandaloneControlCentre(server);
   server.begin();
   syncObsWatcher(server, settings.view(ROOT).startup.startWhenObsStarts);
 
@@ -1069,7 +1192,6 @@ async function main() {
   // Stop a server this app started, then exit.
   let quitting = false;
   app.on('before-quit', (event) => {
-    appQuitting = true;
     if (quitting) return;
     event.preventDefault();
     quitting = true;
@@ -1090,7 +1212,9 @@ if (!app.requestSingleInstanceLock()) {
   // If the window already exists it is brought forward; otherwise startup shows it.
   app.on('second-instance', () => {
     startupLog('Second launch received.');
-    bringToFront(mainWin);
+    // A second launch brings forward the window the user is looking for: the Control Centre
+    // when the shell is hidden, otherwise the shell.
+    bringToFront(standaloneWin || mainWin);
   });
   main().catch((err) => {
     startupLog(`Startup failed: ${err.stack || err}`);
